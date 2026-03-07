@@ -97,7 +97,7 @@ export function BeforeAfterSlider({
   );
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/50">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div
         ref={containerRef}
         className="relative aspect-[4/3] cursor-col-resize select-none sm:aspect-[16/10]"
@@ -148,12 +148,12 @@ export function BeforeAfterSlider({
           onMouseDown={handlePointerDown}
           onTouchStart={handlePointerDown}
         >
-          <div className="flex h-12 w-6 shrink-0 items-center justify-center rounded-full bg-white shadow-lg ring-2 ring-slate-200/80 transition active:scale-95 active:ring-emerald-300 dark:ring-slate-600">
+          <div className="flex h-12 w-6 shrink-0 items-center justify-center rounded-full bg-white shadow-lg ring-2 ring-slate-200 transition active:scale-95 active:ring-emerald-300 dark:ring-slate-600">
             <GripVertical className="h-5 w-5 text-slate-600" strokeWidth={2.5} />
           </div>
           <div className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-white shadow-lg" aria-hidden />
         </div>
-        <div className="absolute left-3 top-3 rounded-lg bg-black/60 px-2.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+        <div className="absolute left-3 top-3 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white">
           {beforeLabel} / {afterLabel} • drag to compare
         </div>
       </div>

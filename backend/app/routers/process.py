@@ -32,11 +32,15 @@ async def process_images(
     files: list[UploadFile] = File(...),
     output_format: str = Form("png"),
     background: str = Form("white"),
+    processing_mode: str = Form("standard"),
+    lighting_boost: str = Form("1.1"),
 ):
     """
     Process one or more images for background removal.
     Single image: returns result inline.
     Batch (4+): returns job_id, poll /api/status/{job_id} for progress.
+    processing_mode: "keep-floor-walls" | "enhance-preserve" | "standard"
+    lighting_boost: 1.0-1.5 for enhance-preserve mode
     """
     if not files:
         raise HTTPException(400, "No files uploaded")
@@ -52,7 +56,17 @@ async def process_images(
         filename = f.filename or "image.jpg"
         images.append((data, filename))
 
-    opts = {"output_format": output_format, "background": background}
+    try:
+        lb = float(lighting_boost)
+        lb = max(1.0, min(1.5, lb))
+    except (TypeError, ValueError):
+        lb = 1.1
+    opts = {
+        "output_format": output_format,
+        "background": background,
+        "processing_mode": processing_mode,
+        "lighting_boost": str(lb),
+    }
 
     # Small batches: sync. Large: async with job_id
     if len(images) <= 3:

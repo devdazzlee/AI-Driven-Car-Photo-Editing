@@ -15,7 +15,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Car Image AI | Background Removal",
-  description: "AI-powered car photo editing. Upload images for automatic background removal. Single or batch processing.",
+  description: "Car image editor. Keeps floor, walls & corner. Same color, natural look. Single or batch.",
   keywords: ["car photos", "background removal", "AI editing", "image processing"],
 };
 
@@ -31,7 +31,7 @@ export default function RootLayout({
         <Header />
         <div className="flex flex-1 flex-col lg:flex-row">
           <aside className="hidden shrink-0 lg:block lg:w-72 lg:border-r lg:border-slate-200 lg:dark:border-slate-800">
-            <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto p-4">
+            <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto p-4 scrollbar-thin">
               <Sidebar />
             </div>
           </aside>

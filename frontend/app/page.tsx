@@ -28,11 +28,12 @@ export default function Home() {
   const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false);
   const [outputFormat, setOutputFormat] = useState("png");
   const [background, setBackground] = useState("white");
-  const [processingMode, setProcessingMode] = useState("standard");
+  const [lightingBoost, setLightingBoost] = useState(1.1);
+  const [processingMode, setProcessingMode] = useState("keep-floor-walls");
   const showResultsSkeleton = isProcessing && results.length === 0 && progress.total <= 3;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-slate-50/80 via-white to-slate-100/60 dark:from-slate-950/50 dark:via-slate-900/30 dark:to-slate-950/80">
+    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-slate-100 via-white to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {/* Mobile options toggle */}
         <div className="mb-4 flex items-center justify-between lg:hidden">
@@ -49,7 +50,7 @@ export default function Home() {
           </Button>
         </div>
         {mobileOptionsOpen && (
-          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/50 lg:hidden">
+          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 lg:hidden">
             <Sidebar />
           </div>
         )}
@@ -58,10 +59,10 @@ export default function Home() {
         <section className="mb-12">
           <div className="mb-6">
             <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 sm:text-2xl">
-              Background Removal
+              Car Image Editor
             </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Upload car images for AI-powered background removal. Single or batch.
+              Upload car images. Floor, walls and corner are kept—same color, natural look.
             </p>
           </div>
 
@@ -91,6 +92,8 @@ export default function Home() {
                 onBackgroundChange={setBackground}
                 processingMode={processingMode}
                 onProcessingModeChange={setProcessingMode}
+                lightingBoost={lightingBoost}
+                onLightingBoostChange={setLightingBoost}
               />
             </div>
           )}
@@ -103,10 +106,10 @@ export default function Home() {
               )}
             >
               <Button
-                onClick={() => processImages({ outputFormat, background })}
+                onClick={() => processImages({ outputFormat, background, processingMode, lightingBoost })}
                 disabled={isProcessing}
                 size="lg"
-                className="min-w-[160px] shadow-lg shadow-emerald-600/20"
+                className="min-w-[160px] shadow-lg"
               >
                 {isProcessing ? (
                   <>
@@ -143,12 +146,12 @@ export default function Home() {
             ) : (
               <Card
                 className={cn(
-                  "mt-6 animate-scale-in border-emerald-200/60 bg-gradient-to-r from-emerald-50/80 to-teal-50/50 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-teal-950/20",
+                  "mt-6 animate-scale-in border-emerald-200 bg-gradient-to-r from-emerald-100 to-teal-100 dark:border-emerald-900 dark:from-emerald-950 dark:to-teal-950",
                   "opacity-0 [animation-fill-mode:forwards]"
                 )}
               >
                 <CardContent className="flex items-center gap-4 p-5 sm:p-6">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900">
                     <Loader2 className="h-5 w-5 animate-spin text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -156,7 +159,11 @@ export default function Home() {
                       Processing images…
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      AI is removing backgrounds. This may take 10–15 seconds per image.
+                      {processingMode === "keep-floor-walls"
+                        ? "Keeping floor, walls & corner—same color, natural look."
+                        : processingMode === "enhance-preserve"
+                          ? "Removing sky/ceiling, enhancing car, adjusting lighting…"
+                          : "AI is removing backgrounds. This may take 10–15 seconds per image."}
                     </p>
                   </div>
                 </CardContent>
@@ -172,7 +179,7 @@ export default function Home() {
           {failed.length > 0 && (
             <Card
               className={cn(
-                "mt-6 animate-scale-in border-amber-200/80 bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-950/30",
+                "mt-6 animate-scale-in border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950",
                 "opacity-0 [animation-fill-mode:forwards]"
               )}
               style={{ animationDelay: "50ms" }}
@@ -208,31 +215,31 @@ export default function Home() {
           <div className="flex flex-wrap gap-3">
             <a
               href="/features"
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-900"
             >
               Features
             </a>
             <a
               href="/how-it-works"
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-900"
             >
               How it works
             </a>
             <a
               href="/api-docs"
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-900"
             >
               API Docs
             </a>
             <a
               href="/documentation"
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-900"
             >
               Documentation
             </a>
             <a
               href="/contact"
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-700 dark:hover:bg-emerald-900"
             >
               Contact
             </a>

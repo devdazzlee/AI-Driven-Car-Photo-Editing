@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Upload, Sparkles, Eye, Download } from "lucide-react";
 
 const steps = [
-  { step: 1, icon: Upload, title: "Upload", description: "Drag & drop your raw car photos or click to browse. Supports JPEG, PNG, WebP. Single or batch (up to 50 images)." },
-  { step: 2, icon: Sparkles, title: "Process", description: "Click Process Images. Our AI (RMBG-1.4) removes backgrounds in ~10–15 seconds per image. Batch jobs run sequentially with live progress." },
+  { step: 1, icon: Upload, title: "Upload", description: "Drag & drop your raw car photos or click to browse. Supports JPEG, PNG, WebP, NEF. Single or batch (up to 50 images)." },
+  { step: 2, icon: Sparkles, title: "Process", description: "Click Process Images. By default, floor, walls and corner are kept—same color, natural look. No deletion of floors or walls. Optional: enhance car & lighting, or remove background for studio style." },
   { step: 3, icon: Eye, title: "Preview", description: "Use the before/after slider to compare original and processed images. Verify quality before download." },
-  { step: 4, icon: Download, title: "Download", description: "Download processed images with white or transparent backgrounds. Ready for your website, listings, or marketing." },
+  { step: 4, icon: Download, title: "Download", description: "Download processed images. Floor and walls intact with corner visible—ready for your website, listings, or marketing." },
 ];
 
 export default function HowItWorksPage() {

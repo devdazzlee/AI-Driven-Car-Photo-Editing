@@ -78,14 +78,14 @@ export function DropZone({
           "group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300 sm:p-12",
           "animate-fade-in",
           disabled
-            ? "cursor-not-allowed border-slate-200 bg-slate-100/80 dark:border-slate-700 dark:bg-slate-800/50"
+            ? "cursor-not-allowed border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
             : isDragging
-              ? "scale-[1.02] border-emerald-400 bg-emerald-50/80 shadow-lg shadow-emerald-500/10 dark:border-emerald-600 dark:bg-emerald-950/30"
-              : "border-slate-300 bg-white hover:border-emerald-300 hover:bg-emerald-50/30 hover:shadow-md dark:border-slate-600 dark:bg-slate-900/50 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/20"
+              ? "scale-[1.02] border-emerald-400 bg-emerald-100 shadow-lg dark:border-emerald-600 dark:bg-emerald-950"
+              : "border-slate-300 bg-white hover:border-emerald-300 hover:bg-emerald-100 hover:shadow-md dark:border-slate-600 dark:bg-slate-900 dark:hover:border-emerald-700 dark:hover:bg-emerald-900"
         )}
       >
         {disabled && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-slate-900/80">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white dark:bg-slate-900">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
               <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
@@ -109,7 +109,7 @@ export function DropZone({
               "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl transition-all duration-300 sm:h-20 sm:w-20",
               isDragging && !disabled
                 ? "bg-emerald-500 text-white"
-                : "bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-600 dark:bg-slate-800 dark:group-hover:bg-emerald-900/50"
+                : "bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-600 dark:bg-slate-800 dark:group-hover:bg-emerald-900"
             )}
           >
             <Upload className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={2} />

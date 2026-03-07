@@ -46,6 +46,8 @@ type Props = {
   onBackgroundChange: (v: string) => void;
   processingMode: string;
   onProcessingModeChange: (v: string) => void;
+  lightingBoost?: number;
+  onLightingBoostChange?: (v: number) => void;
 };
 
 export function SelectedFilesCard({
@@ -58,20 +60,22 @@ export function SelectedFilesCard({
   onBackgroundChange,
   processingMode,
   onProcessingModeChange,
+  lightingBoost = 1.1,
+  onLightingBoostChange,
 }: Props) {
   if (files.length === 0) return null;
 
   return (
     <Card
       className={cn(
-        "animate-scale-in overflow-hidden border-slate-200/80 shadow-md dark:border-slate-700/80",
+        "animate-scale-in overflow-hidden border-slate-200 shadow-md dark:border-slate-700",
         "opacity-0 [animation-fill-mode:forwards]"
       )}
       style={{ animationDelay: "50ms" }}
     >
       <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900">
             <ImageIcon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
@@ -145,7 +149,11 @@ export function SelectedFilesCard({
                 <Palette className="h-3.5 w-3.5" />
                 Background
               </label>
-              <Select value={background} onValueChange={onBackgroundChange}>
+              <Select
+                value={background}
+                onValueChange={onBackgroundChange}
+                disabled={processingMode === "keep-floor-walls" || processingMode === "enhance-preserve"}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -156,7 +164,34 @@ export function SelectedFilesCard({
                   <SelectItem value="dark-gray">Dark gray</SelectItem>
                 </SelectContent>
               </Select>
+              {(processingMode === "keep-floor-walls" || processingMode === "enhance-preserve") && (
+                <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                  {processingMode === "keep-floor-walls"
+                    ? "Same floor color, wall corner shown—no deletion"
+                    : "Enhances car &amp; lighting, keeps floor &amp; walls"}
+                </p>
+              )}
             </div>
+
+            {processingMode === "enhance-preserve" && onLightingBoostChange && (
+              <div>
+                <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Lighting boost
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min="1"
+                    max="1.5"
+                    step="0.05"
+                    value={lightingBoost}
+                    onChange={(e) => onLightingBoostChange(parseFloat(e.target.value))}
+                    className="h-2 flex-1 accent-emerald-600"
+                  />
+                  <span className="w-8 text-xs text-slate-500">{lightingBoost.toFixed(1)}</span>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -168,9 +203,13 @@ export function SelectedFilesCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="fast">Fast</SelectItem>
-                  <SelectItem value="high-quality">High quality</SelectItem>
+                  <SelectItem value="keep-floor-walls">
+                    Keep floor &amp; walls (default—same floor color, corner shown, natural)
+                  </SelectItem>
+                  <SelectItem value="enhance-preserve">Enhance car &amp; lighting (keeps floor &amp; walls)</SelectItem>
+                  <SelectItem value="standard">Remove background (studio white)</SelectItem>
+                  <SelectItem value="fast">Fast background removal</SelectItem>
+                  <SelectItem value="high-quality">High quality removal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -182,7 +221,7 @@ export function SelectedFilesCard({
           <h4 className="mb-3 text-xs font-medium text-slate-500 dark:text-slate-400">
             Selected files
           </h4>
-          <ul className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-800/30">
+          <ul className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-100 p-3 dark:border-slate-700 dark:bg-slate-800">
             {files.map((f, i) => (
               <li
                 key={i}

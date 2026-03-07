@@ -93,9 +93,9 @@ body {
 .animate-skeleton {
   background: linear-gradient(
     90deg,
-    rgb(226 232 240 / 1) 0%,
-    rgb(241 245 249 / 0.8) 50%,
-    rgb(226 232 240 / 1) 100%
+    rgb(226 232 240) 0%,
+    rgb(241 245 249) 50%,
+    rgb(226 232 240) 100%
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
@@ -104,17 +104,28 @@ body {
 .dark .animate-skeleton {
   background: linear-gradient(
     90deg,
-    rgb(30 41 59 / 1) 0%,
-    rgb(51 65 85 / 0.8) 50%,
-    rgb(30 41 59 / 1) 100%
+    rgb(30 41 59) 0%,
+    rgb(51 65 85) 50%,
+    rgb(30 41 59) 100%
   );
 }
 
-/* Hide scrollbar but keep functionality */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* Thin scrollbar - avoids Chromium scroll glitch from scrollbar-hide during scroll */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184) var(--background);
 }
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--background);
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184);
+  border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139);
 }

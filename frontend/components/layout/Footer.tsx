@@ -23,7 +23,7 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/50">
+    <footer className="mt-auto border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
@@ -36,8 +36,8 @@ export function Footer() {
               </span>
             </Link>
             <p className="mt-3 max-w-xs text-sm text-slate-600 dark:text-slate-400">
-              AI-powered car photo editing. Remove backgrounds, standardize lighting, and
-              process images in batch with one click.
+              Car image editor. Keeps floor, walls and corner—same color, natural look.
+              Process images in batch with one click.
             </p>
           </div>
 

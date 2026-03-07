@@ -1,0 +1,106 @@
+{
+  "job_id": "f50e010b-8f03-4a9f-9c49-fa465c3cd2f9",
+  "total": 19,
+  "completed": 19,
+  "failed": [],
+  "results": [
+    {
+      "original_filename": "DSC_0158.JPG",
+      "processed_filename": "DSC_0158_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0158_1.JPG",
+      "processed_filename": "DSC_0158_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0165.JPG",
+      "processed_filename": "DSC_0165_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0165_1.JPG",
+      "processed_filename": "DSC_0165_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0167.JPG",
+      "processed_filename": "DSC_0167_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0167_1.JPG",
+      "processed_filename": "DSC_0167_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0168.JPG",
+      "processed_filename": "DSC_0168_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0168_1.JPG",
+      "processed_filename": "DSC_0168_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0169.JPG",
+      "processed_filename": "DSC_0169_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0169_1.JPG",
+      "processed_filename": "DSC_0169_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0170.JPG",
+      "processed_filename": "DSC_0170_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0170_1.JPG",
+      "processed_filename": "DSC_0170_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0171.JPG",
+      "processed_filename": "DSC_0171_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0171_1.JPG",
+      "processed_filename": "DSC_0171_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0172.JPG",
+      "processed_filename": "DSC_0172_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0172_1.JPG",
+      "processed_filename": "DSC_0172_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0173.JPG",
+      "processed_filename": "DSC_0173_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0173_1.JPG",
+      "processed_filename": "DSC_0173_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0174_1.JPG",
+      "processed_filename": "DSC_0174_1_processed.png",
+      "success": true
+    }
+  ],
+  "started_at": "2026-03-05T02:41:56.287554",
+  "finished_at": "2026-03-05T02:44:21.507086",
+  "status": "completed"
+}

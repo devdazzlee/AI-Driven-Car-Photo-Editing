@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Download, X, CheckCircle2, ChevronLeft, ChevronRight, DownloadCloud } from "lucide-react";
+import { Download, X, CheckCircle2, ChevronLeft, ChevronRight, DownloadCloud, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import JSZip from "jszip";
 import { BeforeAfterSlider } from "./BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -26,6 +27,8 @@ function truncateFilename(name: string, maxLen = 22) {
 
 export function ResultGallery({ results, onClear, isLoading }: Props) {
   const [selected, setSelected] = useState(0);
+  const [downloadAllLoading, setDownloadAllLoading] = useState(false);
+  const downloadAllRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const item = results[selected];
 
@@ -33,28 +36,42 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
     const el = scrollRef.current;
     if (!el || results.length <= 1) return;
     const tab = el.querySelector(`[data-index="${selected}"]`);
-    tab?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    tab?.scrollIntoView({ behavior: "instant", block: "nearest", inline: "center" });
   }, [selected, results.length]);
 
-  const handleDownloadAll = useCallback(() => {
-    results.forEach((r, i) => {
-      setTimeout(() => {
-        const a = document.createElement("a");
-        a.href = r.processedUrl;
-        a.download = r.processedFilename;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }, i * 200);
-    });
-    toast.success(`Downloading ${results.length} image${results.length > 1 ? "s" : ""}…`);
+  const handleDownloadAll = useCallback(async () => {
+    if (downloadAllRef.current || results.length === 0) return;
+    downloadAllRef.current = true;
+    setDownloadAllLoading(true);
+    try {
+      const zip = new JSZip();
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        const res = await fetch(r.processedUrl);
+        const blob = await res.blob();
+        zip.file(r.processedFilename, blob);
+      }
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `car-images-processed.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${results.length} image${results.length > 1 ? "s" : ""} as ZIP`);
+    } catch (e) {
+      toast.error("Failed to create ZIP download");
+    } finally {
+      downloadAllRef.current = false;
+      setDownloadAllLoading(false);
+    }
   }, [results]);
 
   if (isLoading) {
     return (
-      <Card className="overflow-hidden border-slate-200/80 shadow-md dark:border-slate-700/80">
+      <Card className="overflow-hidden border-slate-200 shadow-md dark:border-slate-700">
         <CardHeader className="space-y-2 pb-4 sm:pb-6">
           <div className="flex items-center gap-2">
             <Skeleton className="h-5 w-5 rounded" />
@@ -77,15 +94,15 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
   return (
     <Card
       className={cn(
-        "animate-scale-in overflow-hidden border-0 bg-white shadow-xl dark:bg-slate-900/50 dark:shadow-slate-950/50",
+        "animate-scale-in overflow-hidden border-0 bg-white shadow-xl dark:bg-slate-900 dark:shadow-slate-950",
         "opacity-0 [animation-fill-mode:forwards]"
       )}
       style={{ animationDelay: "100ms" }}
     >
-      <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4 dark:border-slate-800 dark:from-slate-900/50 dark:to-slate-900/80 sm:px-6 sm:py-5">
+      <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-100 to-white px-5 py-4 dark:border-slate-800 dark:from-slate-800 dark:to-slate-800 sm:px-6 sm:py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 shadow-inner dark:bg-emerald-500/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 shadow-inner dark:bg-emerald-900">
               <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} />
             </div>
             <div>
@@ -101,7 +118,7 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
             variant="ghost"
             size="sm"
             onClick={onClear}
-            className="rounded-lg text-slate-500 hover:bg-slate-200/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           >
             <X className="mr-1.5 h-4 w-4" />
             Clear
@@ -128,14 +145,14 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
               <button
                 type="button"
                 onClick={() => setSelected((s) => (s > 0 ? s - 1 : results.length - 1))}
-                className="absolute -left-1 z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/95 shadow-lg ring-1 ring-slate-200/80 backdrop-blur-sm transition hover:bg-white dark:bg-slate-800/95 dark:ring-slate-600 dark:hover:bg-slate-800"
+                className="absolute -left-1 z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-800 dark:ring-slate-600 dark:hover:bg-slate-700"
                 aria-label="Previous"
               >
                 <ChevronLeft className="h-5 w-5 text-slate-600 dark:text-slate-300" />
               </button>
               <div
                 ref={scrollRef}
-                className="flex flex-1 gap-3 overflow-x-auto scroll-smooth px-11 py-2 scrollbar-hide"
+                className="flex flex-1 gap-3 overflow-x-auto px-11 py-2 scrollbar-thin"
               >
                 {results.map((r, i) => (
                   <button
@@ -146,8 +163,8 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
                       "group relative shrink-0 overflow-hidden rounded-xl transition-all duration-200",
                       "h-16 w-24 sm:h-20 sm:w-28",
                       selected === i
-                        ? "ring-2 ring-emerald-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 shadow-lg"
-                        : "opacity-70 hover:opacity-100 hover:ring-1 hover:ring-slate-300 dark:hover:ring-slate-600"
+                        ? "ring-2 ring-emerald-500 shadow-lg border-2 border-emerald-500"
+                        : "opacity-70 hover:opacity-100 hover:ring-1 hover:ring-slate-300 dark:hover:ring-slate-600 border-2 border-transparent"
                     )}
                   >
                     <img
@@ -159,7 +176,7 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
                     />
                     <div
                       className={cn(
-                        "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-center text-xs font-medium text-white transition",
+                        "absolute bottom-0 left-0 right-0 bg-slate-900 px-2 py-1 text-center text-xs font-medium text-white transition",
                         selected === i ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                       )}
                     >
@@ -171,7 +188,7 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
               <button
                 type="button"
                 onClick={() => setSelected((s) => (s < results.length - 1 ? s + 1 : 0))}
-                className="absolute -right-1 z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/95 shadow-lg ring-1 ring-slate-200/80 backdrop-blur-sm transition hover:bg-white dark:bg-slate-800/95 dark:ring-slate-600 dark:hover:bg-slate-800"
+                className="absolute -right-1 z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-800 dark:ring-slate-600 dark:hover:bg-slate-700"
                 aria-label="Next"
               >
                 <ChevronRight className="h-5 w-5 text-slate-600 dark:text-slate-300" />
@@ -180,7 +197,7 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
           </div>
         )}
 
-        <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-5 dark:border-slate-800 dark:bg-slate-900/30 sm:px-6 sm:py-6">
+        <div className="border-t border-slate-100 bg-slate-100 px-4 py-5 dark:border-slate-800 dark:bg-slate-800 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
             <div className="min-w-0">
               <p className="truncate font-medium text-slate-800 dark:text-slate-100" title={item.originalFilename}>
@@ -194,7 +211,7 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
               <Button
                 asChild
                 size="lg"
-                className="w-full rounded-xl bg-emerald-600 px-6 font-semibold shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-700 hover:shadow-emerald-600/30 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:w-auto"
+                className="w-full rounded-xl bg-emerald-600 px-6 font-semibold shadow-lg transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:w-auto"
               >
                 <a
                   href={item.processedUrl}
@@ -211,10 +228,15 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
                   variant="outline"
                   size="lg"
                   onClick={handleDownloadAll}
-                  className="w-full rounded-xl border-slate-300 font-medium transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-600 dark:hover:border-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300 sm:w-auto"
+                  disabled={downloadAllLoading}
+                  className="w-full rounded-xl border-slate-300 font-medium transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-600 dark:hover:border-emerald-600 dark:hover:bg-emerald-900 dark:hover:text-emerald-300 sm:w-auto"
                 >
-                  <DownloadCloud className="mr-2 h-5 w-5" />
-                  Download all
+                  {downloadAllLoading ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <DownloadCloud className="mr-2 h-5 w-5" />
+                  )}
+                  {downloadAllLoading ? "Creating ZIP…" : "Download all (ZIP)"}
                 </Button>
               )}
             </div>

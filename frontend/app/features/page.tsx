@@ -13,13 +13,13 @@ import { Button } from "@/components/ui/button";
 const features = [
   {
     icon: Layers,
-    title: "Batch Processing",
-    description: "Process up to 50 car images in a single batch. Upload once, process all with one click.",
+    title: "Keeps Floor & Walls",
+    description: "Same floor color, wall corner shown—natural look. No deletion of floors or walls.",
   },
   {
     icon: Zap,
-    title: "95% Accuracy",
-    description: "RMBG-1.4 delivers studio-quality background removal specifically optimized for automotive photography.",
+    title: "Batch Processing",
+    description: "Process up to 50 car images in a single batch. Upload once, process all with one click.",
   },
   {
     icon: ImageIcon,
@@ -28,13 +28,13 @@ const features = [
   },
   {
     icon: Clock,
-    title: "10–15 Sec per Image",
-    description: "AI-powered processing takes seconds, not hours. Scale your workflow without scaling your team.",
+    title: "Fast Processing",
+    description: "Default mode keeps your images as-is (instant). Optional enhance or background removal when needed.",
   },
   {
     icon: Download,
     title: "Flexible Output",
-    description: "Export as PNG with transparency or JPEG with white/studio background. Your choice.",
+    description: "Export as PNG, JPEG, or WebP. Floor and walls intact with corner visible.",
   },
   {
     icon: CheckCircle2,

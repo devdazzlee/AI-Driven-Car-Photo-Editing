@@ -1,0 +1,31 @@
+{
+  "job_id": "4897ecdf-c3a7-4ac0-81e5-ef5ea3e34057",
+  "total": 4,
+  "completed": 4,
+  "failed": [],
+  "results": [
+    {
+      "original_filename": "DSC_0170_1.JPG",
+      "processed_filename": "DSC_0170_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0171.JPG",
+      "processed_filename": "DSC_0171_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0171_1.JPG",
+      "processed_filename": "DSC_0171_1_processed.png",
+      "success": true
+    },
+    {
+      "original_filename": "DSC_0172.JPG",
+      "processed_filename": "DSC_0172_processed.png",
+      "success": true
+    }
+  ],
+  "started_at": "2026-03-05T02:21:23.940639",
+  "finished_at": "2026-03-05T02:21:52.754583",
+  "status": "completed"
+}

@@ -11,6 +11,8 @@ frontend/node_modules/
 # Environment variables (never commit secrets)
 .env
 .env.local
+frontend/.env
+frontend/.env.local
 backend/.env
 
 # Common build/cache artifacts

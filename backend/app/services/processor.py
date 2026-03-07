@@ -1,5 +1,6 @@
 """Image processing orchestrator with error handling and logging."""
 
+import io
 import json
 import logging
 import uuid
@@ -8,8 +9,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
 from app.config import LOGS_DIR, OUTPUT_DIR
 from app.services.background_removal import background_removal_service
+from app.services.image_utils import load_image
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +69,70 @@ def _process_single(
     log = _jobs.get(job_id)
     fmt = opts.get("output_format", "png").lower()
     bg = opts.get("background", "white").lower()
+    mode = opts.get("processing_mode", "standard").lower()
+
+    if mode == "keep-floor-walls":
+        # Preserve original: floor, walls, corner - no background removal
+        ext = "png" if fmt == "png" else "jpg" if fmt in ("jpeg", "jpg") else "webp"
+        output_filename = f"{Path(filename).stem}_processed.{ext}"
+        output_path = OUTPUT_DIR / job_id / output_filename
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            img = load_image(image_data, filename)  # Handles NEF, PNG, JPEG, WebP
+            if ext in ("jpg", "jpeg") and img.mode != "RGB":
+                img = img.convert("RGB")
+            save_fmt = "JPEG" if ext in ("jpg", "jpeg") else ext.upper()
+            img.save(output_path, format=save_fmt, quality=95)
+            result = {"original_filename": filename, "processed_filename": output_filename, "success": True}
+            if log:
+                log.completed += 1
+                log.results.append(result)
+            return result
+        except Exception as e:
+            logger.exception("Preserve mode failed for %s", filename)
+            failed_entry = {"filename": filename, "error": str(e), "success": False}
+            if log:
+                log.failed.append(failed_entry)
+            return failed_entry
+
+    if mode == "enhance-preserve":
+        # Remove sky/ceiling, enhance car, adjust lighting - keep floor & walls
+        # Lazy import: skimage inpaint can fail on Windows (DLL blocked by App Control)
+        from app.services.enhance_preserve_service import enhance_preserve_service
+
+        ext = "png" if fmt == "png" else "jpg" if fmt in ("jpeg", "jpg") else "webp"
+        output_filename = f"{Path(filename).stem}_processed.{ext}"
+        output_path = OUTPUT_DIR / job_id / output_filename
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            lighting = float(opts.get("lighting_boost", 1.1))
+        except (TypeError, ValueError):
+            lighting = 1.1
+        try:
+            result_bytes = enhance_preserve_service.process(
+                image_data,
+                filename=filename,
+                output_format=ext,
+                remove_sky_ceiling=True,
+                enhance_car=True,
+                lighting_boost=lighting,
+                car_sharpness=1.3,
+                car_contrast=1.1,
+            )
+            output_path.write_bytes(result_bytes)
+            result = {"original_filename": filename, "processed_filename": output_filename, "success": True}
+            if log:
+                log.completed += 1
+                log.results.append(result)
+            return result
+        except Exception as e:
+            logger.exception("Enhance-preserve failed for %s", filename)
+            failed_entry = {"filename": filename, "error": str(e), "success": False}
+            if log:
+                log.failed.append(failed_entry)
+            return failed_entry
+
+    # Standard: background removal
     if bg == "transparent":
         ext = "png"  # Transparency only supported in PNG
     else:
@@ -72,7 +140,6 @@ def _process_single(
     output_filename = f"{Path(filename).stem}_processed.{ext}"
     output_path = OUTPUT_DIR / job_id / output_filename
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
     bg_color = _BG_COLORS.get(bg, (255, 255, 255)) if bg != "transparent" else (255, 255, 255)
 
     try:
@@ -84,12 +151,7 @@ def _process_single(
             keep_transparent=(bg == "transparent"),
         )
         output_path.write_bytes(result_bytes)
-
-        result = {
-            "original_filename": filename,
-            "processed_filename": output_filename,
-            "success": True,
-        }
+        result = {"original_filename": filename, "processed_filename": output_filename, "success": True}
         if log:
             log.completed += 1
             log.results.append(result)

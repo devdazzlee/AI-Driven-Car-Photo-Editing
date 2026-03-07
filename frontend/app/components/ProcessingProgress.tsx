@@ -13,7 +13,7 @@ export function ProcessingProgress({ completed, total }: Props) {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <Card className="animate-scale-in border-emerald-200/60 bg-emerald-50/30 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+    <Card className="animate-scale-in border-emerald-200 bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950">
       <CardContent className="p-5 sm:p-6">
         <div className="flex items-center justify-between gap-4">
           <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
