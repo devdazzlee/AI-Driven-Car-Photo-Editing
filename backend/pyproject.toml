@@ -1,8 +1,0 @@
-[project]
-name = "car-image-ai-backend"
-version = "0.1.0"
-description = "AI-powered car photo editing - background removal"
-
-[tool.uvicorn]
-reload = true
-reload-exclude = ["uploads/*", "outputs/*", "logs/*", "*.json"]
