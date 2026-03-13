@@ -28,7 +28,7 @@ export default function Home() {
   const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false);
   const [outputFormat, setOutputFormat] = useState("png");
   const [background, setBackground] = useState("white");
-  const [lightingBoost, setLightingBoost] = useState(1.1);
+  const [lightingBoost, setLightingBoost] = useState(1.0);
   const [processingMode, setProcessingMode] = useState("enhance-preserve");
   const showResultsSkeleton = isProcessing && results.length === 0 && progress.total <= 3;
 

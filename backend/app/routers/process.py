@@ -33,7 +33,7 @@ async def process_images(
     output_format: str = Form("png"),
     background: str = Form("white"),
     processing_mode: str = Form("standard"),
-    lighting_boost: str = Form("1.1"),
+    lighting_boost: str = Form("1.0"),
 ):
     """
     Process one or more images for background removal.
@@ -60,7 +60,7 @@ async def process_images(
         lb = float(lighting_boost)
         lb = max(1.0, min(1.5, lb))
     except (TypeError, ValueError):
-        lb = 1.1
+        lb = 1.0
     opts = {
         "output_format": output_format,
         "background": background,

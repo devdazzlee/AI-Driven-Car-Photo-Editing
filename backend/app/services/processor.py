@@ -125,9 +125,9 @@ def _process_single(
         output_path = OUTPUT_DIR / job_id / output_filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            lighting = float(opts.get("lighting_boost", 1.1))
+            lighting = float(opts.get("lighting_boost", 1.0))
         except (TypeError, ValueError):
-            lighting = 1.1
+            lighting = 1.0
         try:
             result_bytes = enhance_preserve_service.process(
                 image_data,

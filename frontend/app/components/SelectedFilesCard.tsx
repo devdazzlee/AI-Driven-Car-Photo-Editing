@@ -60,7 +60,7 @@ export function SelectedFilesCard({
   onBackgroundChange,
   processingMode,
   onProcessingModeChange,
-  lightingBoost = 1.1,
+  lightingBoost = 1.0,
   onLightingBoostChange,
 }: Props) {
   if (files.length === 0) return null;

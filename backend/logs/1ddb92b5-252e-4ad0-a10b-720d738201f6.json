@@ -1,0 +1,17 @@
+{
+  "job_id": "1ddb92b5-252e-4ad0-a10b-720d738201f6",
+  "total": 1,
+  "completed": 1,
+  "failed": [],
+  "results": [
+    {
+      "original_filename": "DSC_2439.NEF",
+      "processed_filename": "DSC_2439_processed.png",
+      "success": true,
+      "original_preview": "DSC_2439_original.png"
+    }
+  ],
+  "started_at": "2026-03-13T15:37:08.475395",
+  "finished_at": "2026-03-13T15:38:07.116236",
+  "status": "completed"
+}

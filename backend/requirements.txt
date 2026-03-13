@@ -18,6 +18,9 @@ opencv-python-headless>=4.8.0
 # HTTP client for Hugging Face Inference API (reflection inpainting)
 requests>=2.31.0
 
+# Replicate — FLUX Fill Pro inpainting
+replicate>=0.25.0
+
 # Nikon RAW (NEF) support
 rawpy>=0.19.0
 numpy>=1.24.0
