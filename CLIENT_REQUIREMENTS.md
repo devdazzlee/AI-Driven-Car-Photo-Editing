@@ -18,9 +18,14 @@ This document lists everything the client (Richie) must provide or set up for th
 
 ---
 
-## 2. Replicate (Required for enhance-preserve — FLUX.1-Fill-dev)
+## 2. Replicate (Required for enhance-preserve)
 
-**Purpose:** FLUX.1-Fill-dev is the **primary** reflection removal model. Pay-per-use (~$0.03/image).
+**Purpose:** AI inpainting for reflection removal. Two models available:
+
+| Model | Env var | Cost | Quality |
+|-------|---------|------|---------|
+| **FLUX Fill Pro** (default) | `REPLICATE_INPAINT_MODEL=flux` | ~$0.03/image | Best |
+| **SD Inpainting** (open-source) | `REPLICATE_INPAINT_MODEL=sd-inpainting` | ~$0.004/image | Good |
 
 | Item | How to get it |
 |------|---------------|
@@ -29,7 +34,9 @@ This document lists everything the client (Richie) must provide or set up for th
 
 **Where to use:** Set `REPLICATE_API_TOKEN=your_token` in `backend/.env`.
 
-Without this token, enhance-preserve falls back to local reflection removal (lower quality).
+Optional: Add `REPLICATE_INPAINT_MODEL=sd-inpainting` to use the cheaper Stable Diffusion inpainting model instead of FLUX.
+
+Without the token, enhance-preserve falls back to local OpenCV inpainting (lower quality).
 
 ---
 

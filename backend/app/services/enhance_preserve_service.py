@@ -1,9 +1,10 @@
 """
 AI-Driven Car Photo Enhancement Pipeline (enhance-preserve mode).
 
-Uses FLUX Fill Pro for reflection removal (body, glass, ceiling).
+Uses FLUX Fill Pro or SD Inpainting for reflection removal (body, glass, ceiling).
+Set REPLICATE_INPAINT_MODEL=sd-inpainting for cheaper open-source alternative.
 Uses OpenCV for tires (avoids NSFW filter).
-Color correction applied after FLUX to match surrounding pixels.
+Color correction applied after AI inpainting to match surrounding pixels.
 """
 
 import io
@@ -14,7 +15,7 @@ import numpy as np
 from PIL import Image as PILImage
 
 from app.services.image_utils import load_image
-from app.services.replicate_service import flux_fill_pro_inpaint
+from app.services.replicate_service import ai_inpaint
 
 
 class EnhancePreserveService:
@@ -253,7 +254,7 @@ class EnhancePreserveService:
             ).astype(np.uint8)
             print(f"[CEILING] Removed {detected_px} px via context inpainting (large mask)")
         else:
-            result = flux_fill_pro_inpaint(
+            result = ai_inpaint(
                 image=image,
                 mask=ceiling_objects,
                 prompt="Clean smooth white studio wall and ceiling, plain white, no lights no pipes",
@@ -323,7 +324,7 @@ class EnhancePreserveService:
             print("[BODY REFL] No significant reflections found")
             return image
 
-        result = flux_fill_pro_inpaint(
+        result = ai_inpaint(
             image=image,
             mask=reflection_mask,
             prompt="Smooth car body paint, same color as surrounding area, no reflections no highlights, matte automotive paint matching this car exactly",
@@ -427,7 +428,7 @@ class EnhancePreserveService:
             print("[GLASS] No reflections found on glass")
             return image
 
-        result = flux_fill_pro_inpaint(
+        result = ai_inpaint(
             image=image,
             mask=reflection_mask,
             prompt="Car window glass, dark tinted, no reflections no glare, smooth uniform glass matching surrounding windows",

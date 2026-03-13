@@ -1,6 +1,7 @@
 """
-General-purpose Replicate FLUX Fill Pro inpainting service.
-Used by enhance_preserve_service.py for all AI-powered image editing.
+Replicate inpainting service — FLUX Fill Pro and SD Inpainting.
+Used by enhance_preserve_service.py for reflection removal.
+Set REPLICATE_INPAINT_MODEL=sd-inpainting for cheaper open-source alternative.
 """
 
 import os
@@ -14,10 +15,11 @@ import numpy as np
 import requests
 from PIL import Image
 
-from app.config import REPLICATE_API_TOKEN
+from app.config import REPLICATE_API_TOKEN, REPLICATE_INPAINT_MODEL
 
-# FLUX Fill Pro — best inpainting model available
+# Models
 FLUX_FILL_MODEL = "black-forest-labs/flux-fill-pro"
+SD_INPAINT_MODEL = "stability-ai/stable-diffusion-inpainting"
 
 
 def _numpy_to_pil(img_bgr: np.ndarray) -> Image.Image:
@@ -71,7 +73,7 @@ def _download_result_image(output) -> np.ndarray:
     else:
         url = str(output)
 
-    print(f"[FLUX] Downloading result from: {url[:80]}...")
+    print(f"[Replicate] Downloading result from: {url[:80]}...")
 
     response = requests.get(url, timeout=180)
     response.raise_for_status()
@@ -196,6 +198,140 @@ def flux_fill_pro_inpaint(
         return cv2.inpaint(image, mask, 10, cv2.INPAINT_NS)
 
 
+def _sd_inpaint(
+    image: np.ndarray,
+    mask: np.ndarray,
+    prompt: str,
+    guidance_scale: float = 7.5,
+    num_inference_steps: int = 50,
+    max_dimension: int = 768,
+    timeout_seconds: float = 300.0,
+) -> np.ndarray:
+    """
+    Use Stable Diffusion Inpainting (open-source, ~$0.004/run).
+    White pixels in mask = inpaint area.
+    """
+    token = REPLICATE_API_TOKEN or os.environ.get("REPLICATE_API_TOKEN", "")
+    if not token:
+        print("[SD Inpaint] ERROR: REPLICATE_API_TOKEN not set!")
+        return cv2.inpaint(image, mask, 10, cv2.INPAINT_NS)
+
+    os.environ["REPLICATE_API_TOKEN"] = token
+
+    original_h, original_w = image.shape[:2]
+    mask_px = int(np.count_nonzero(mask > 127))
+
+    if mask_px < 100:
+        print(f"[SD Inpaint] Mask too small ({mask_px} px)")
+        return image
+
+    print(f"[SD Inpaint] stability-ai/stable-diffusion-inpainting — mask={mask_px} px")
+
+    scale = 1.0
+    api_w, api_h = original_w, original_h
+    if max(original_h, original_w) > max_dimension:
+        scale = max_dimension / max(original_h, original_w)
+        api_w = int(original_w * scale)
+        api_h = int(original_h * scale)
+
+    api_w = max(64, (api_w // 64) * 64)
+    api_h = max(64, (api_h // 64) * 64)
+
+    image_resized = cv2.resize(image, (api_w, api_h), interpolation=cv2.INTER_LANCZOS4)
+    mask_resized = cv2.resize(mask, (api_w, api_h), interpolation=cv2.INTER_NEAREST)
+    _, mask_resized = cv2.threshold(mask_resized, 127, 255, cv2.THRESH_BINARY)
+
+    image_uri = _numpy_to_data_uri(image_resized)
+    mask_uri = _mask_to_data_uri(mask_resized)
+
+    try:
+        import replicate
+    except ImportError:
+        print("[SD Inpaint] replicate package not installed")
+        return cv2.inpaint(image, mask, 10, cv2.INPAINT_NS)
+
+    try:
+        start_time = time.time()
+        client = replicate.Client(
+            timeout=httpx.Timeout(timeout_seconds, connect=60.0, write=120.0)
+        )
+        output = client.run(
+            SD_INPAINT_MODEL,
+            input={
+                "image": image_uri,
+                "mask": mask_uri,
+                "prompt": prompt,
+                "width": api_w,
+                "height": api_h,
+                "guidance_scale": guidance_scale,
+                "num_inference_steps": num_inference_steps,
+                "negative_prompt": "reflection, glare, highlights, blurry, distorted",
+            },
+        )
+
+        elapsed = time.time() - start_time
+        print(f"[SD Inpaint] API response in {elapsed:.1f}s")
+
+        result_resized = _download_result_image(output)
+        result_full = cv2.resize(
+            result_resized, (original_w, original_h), interpolation=cv2.INTER_LANCZOS4
+        )
+
+        feather_mask = cv2.GaussianBlur(mask, (21, 21), 7)
+        feather_float = feather_mask.astype(np.float32) / 255.0
+
+        output_image = image.copy()
+        for c in range(3):
+            output_image[:, :, c] = (
+                result_full[:, :, c] * feather_float
+                + image[:, :, c] * (1.0 - feather_float)
+            ).astype(np.uint8)
+
+        print(f"[SD Inpaint] SUCCESS — inpainted {mask_px} px in {elapsed:.1f}s")
+        return output_image
+
+    except Exception as e:
+        print(f"[SD Inpaint] API ERROR: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return cv2.inpaint(image, mask, 10, cv2.INPAINT_NS)
+
+
+def ai_inpaint(
+    image: np.ndarray,
+    mask: np.ndarray,
+    prompt: str,
+    guidance: float = 30.0,
+    steps: int = 50,
+    max_dimension: int = 1536,
+    timeout_seconds: float = 600.0,
+    **kwargs,
+) -> np.ndarray:
+    """
+    Unified inpainting — dispatches to FLUX or SD Inpainting based on REPLICATE_INPAINT_MODEL.
+    """
+    model = REPLICATE_INPAINT_MODEL or "flux"
+    if model in ("sd", "sd-inpainting", "stable-diffusion", "stable-diffusion-inpainting"):
+        return _sd_inpaint(
+            image,
+            mask,
+            prompt,
+            guidance_scale=min(20.0, max(1.0, guidance / 4)),
+            num_inference_steps=steps,
+            max_dimension=768,
+            timeout_seconds=timeout_seconds,
+        )
+    return flux_fill_pro_inpaint(
+        image, mask, prompt,
+        guidance=guidance,
+        steps=steps,
+        max_dimension=max_dimension,
+        timeout_seconds=timeout_seconds,
+        **kwargs,
+    )
+
+
 def flux_fill_pro_inpaint_region(
     image: np.ndarray,
     mask: np.ndarray,
@@ -225,7 +361,7 @@ def flux_fill_pro_inpaint_region(
     crop_image = image[y1_pad:y2_pad, x1_pad:x2_pad].copy()
     crop_mask = mask[y1_pad:y2_pad, x1_pad:x2_pad].copy()
 
-    crop_result = flux_fill_pro_inpaint(crop_image, crop_mask, prompt, **kwargs)
+    crop_result = ai_inpaint(crop_image, crop_mask, prompt, **kwargs)
 
     result = image.copy()
     result[y1_pad:y2_pad, x1_pad:x2_pad] = crop_result
