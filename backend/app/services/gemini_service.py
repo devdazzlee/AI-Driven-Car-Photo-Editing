@@ -18,6 +18,7 @@ from PIL import Image, ImageOps
 from app.config import GEMINI_API_KEY
 
 logger = logging.getLogger(__name__)
+logging.getLogger("google_genai.models").setLevel(logging.WARNING)  # Suppress noisy AFC info logs
 
 GEMINI_MODEL = "gemini-3.1-flash-image-preview"
 # Image generation can take 2-5 min; 3 min caused ReadTimeout on slow responses
