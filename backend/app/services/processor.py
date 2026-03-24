@@ -76,6 +76,10 @@ def _process_single(
     fmt = opts.get("output_format", "png").lower()
     bg = opts.get("background", "white").lower()
     mode = opts.get("processing_mode", "standard").lower()
+    try:
+        lb = float(opts.get("lighting_boost", "1.0"))
+    except (TypeError, ValueError):
+        lb = 1.0
 
     logger.info("Processing %s with mode=%s, format=%s", filename, mode, fmt)
 
@@ -120,6 +124,7 @@ def _process_single(
                 image_data,
                 filename=filename,
                 output_format=ext,
+                lighting_boost=lb,
             )
             output_path.write_bytes(result_bytes)
             result = {"original_filename": filename, "processed_filename": output_filename, "success": True}
@@ -153,6 +158,7 @@ def _process_single(
             mode="standard",
             output_format=ext,
             background=bg,
+            lighting_boost=lb,
         )
         output_path.write_bytes(result_bytes)
         result = {"original_filename": filename, "processed_filename": output_filename, "success": True}

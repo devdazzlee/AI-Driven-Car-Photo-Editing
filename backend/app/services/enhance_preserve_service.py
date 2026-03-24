@@ -16,6 +16,7 @@ class EnhancePreserveService:
         image_data: bytes,
         filename: str,
         output_format: str = "png",
+        lighting_boost: float = 1.0,
         **kwargs,
     ) -> bytes:
         """Process car image using Gemini API."""
@@ -24,6 +25,7 @@ class EnhancePreserveService:
             filename=filename,
             mode="enhance-preserve",
             output_format=output_format,
+            lighting_boost=lighting_boost,
         )
 
 
