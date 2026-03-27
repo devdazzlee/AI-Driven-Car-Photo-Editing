@@ -255,15 +255,15 @@ def _is_flipped(original: Image.Image, result: Image.Image) -> bool:
 
 def _check_color_accuracy(original: Image.Image, result: Image.Image, client,
                           prompt: str, img_bytes: bytes, aspect: str, label: str) -> Image.Image:
-    """If color drifted >30%, retry Gemini call once and keep the better result."""
+    """If color drifted >10%, retry Gemini call once and keep the better result."""
     orig_avg = np.array(original.resize((64, 64))).mean(axis=(0, 1))
     res_avg = np.array(result.resize((64, 64))).mean(axis=(0, 1))
     color_diff = np.abs(orig_avg - res_avg).mean() / 255.0
 
-    if color_diff <= 0.30:
+    if color_diff <= 0.10:
         return result
 
-    logger.warning("Color drift %.1f%% exceeds 30%% for %s — retrying once", color_diff * 100, label)
+    logger.warning("Color drift %.1f%% exceeds 10%% for %s — retrying once", color_diff * 100, label)
     try:
         retry_response = _call_gemini_with_retry(client, prompt, img_bytes, aspect, f"{label}[retry]")
         retry_pil = _extract_image_from_response(retry_response)
@@ -275,6 +275,54 @@ def _check_color_accuracy(original: Image.Image, result: Image.Image, client,
     except Exception:
         logger.warning("Color retry failed for %s, using first result", label)
     return result
+
+
+def _get_car_mask_rembg(pil_img: Image.Image) -> np.ndarray:
+    """Get boolean mask of the car using rembg."""
+    try:
+        from rembg import remove
+        mask_pil = remove(pil_img, only_mask=True)
+        if mask_pil.mode != 'L':
+            mask_pil = mask_pil.convert('L')
+        return np.array(mask_pil) > 128
+    except Exception as e:
+        logger.error("Failed to generate RMBG mask: %s", e)
+        return np.ones((pil_img.height, pil_img.width), dtype=bool)
+
+
+def _get_average_color(pil_img: Image.Image, mask_np: np.ndarray) -> np.ndarray:
+    """Get average RGB color of the masked area."""
+    img_np = np.array(pil_img)
+    if not mask_np.any():
+        return np.array([0.0, 0.0, 0.0])
+    return img_np[mask_np].mean(axis=0)
+
+
+def _apply_color_correction(original: Image.Image, processed: Image.Image, mask_np: np.ndarray) -> Image.Image:
+    """Correct color shift using channel-wise ratios on car area."""
+    original_color = _get_average_color(original, mask_np)
+    processed_color = _get_average_color(processed, mask_np)
+    
+    if np.all(original_color == 0) or np.all(processed_color == 0):
+        return processed
+
+    shift = np.abs(original_color - processed_color) / (original_color + 1e-6)
+    
+    if np.any(shift > 0.10):
+        logger.info("Color shift >10%% detected. Original RGB: %s, Processed RGB: %s. Applying correction.", 
+                    original_color.round(1), processed_color.round(1))
+        
+        correction_factor = original_color / (processed_color + 1e-6)
+        
+        processed_np = np.array(processed).astype(np.float32)
+        corrected_np = processed_np.copy()
+        
+        corrected_pixels = processed_np[mask_np] * correction_factor
+        corrected_np[mask_np] = np.clip(corrected_pixels, 0, 255)
+        
+        return Image.fromarray(corrected_np.astype(np.uint8))
+    
+    return processed
 
 
 def _apply_brightness(pil_img: Image.Image, boost: float) -> Image.Image:
@@ -329,7 +377,21 @@ def process_car_image(
     img_bytes = _pil_to_jpeg_bytes(pil_img)
     client = _get_client()
 
-    response = _call_gemini_with_retry(client, prompt, img_bytes, aspect, filename)
+    # NEW: Sample original car color using RMBG mask
+    mask_np = _get_car_mask_rembg(pil_img)
+    original_car_color = _get_average_color(pil_img, mask_np)
+    r, g, b = int(original_car_color[0]), int(original_car_color[1]), int(original_car_color[2])
+
+    if mode == "enhance-preserve":
+        prompt_with_color = prompt + (
+            f"\n\n9. CAR COLOR IS CRITICAL: The car in this image is exactly color RGB approximately ({r}, {g}, {b}). "
+            "You must preserve this exact color. Do not lighten, darken or shift the hue under any circumstances. "
+            "The output car color must match the input car color exactly."
+        )
+    else:
+        prompt_with_color = prompt
+
+    response = _call_gemini_with_retry(client, prompt_with_color, img_bytes, aspect, filename)
     result_pil = _extract_image_from_response(response)
 
     # Resize result to match input dimensions
@@ -338,10 +400,13 @@ def process_car_image(
 
     # Post-processing: color accuracy check
     result_pil = _check_color_accuracy(
-        pil_img, result_pil, client, prompt, img_bytes, aspect, filename,
+        pil_img, result_pil, client, prompt_with_color, img_bytes, aspect, filename,
     )
     if result_pil.size != pil_img.size:
         result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
+
+    # Post-processing: exact color correction mapping using RMBG mask
+    result_pil = _apply_color_correction(pil_img, result_pil, mask_np)
 
     # Post-processing: flip detection
     if _is_flipped(pil_img, result_pil):
