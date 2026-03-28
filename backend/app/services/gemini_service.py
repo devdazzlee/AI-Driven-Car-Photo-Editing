@@ -9,6 +9,7 @@ import base64
 import io
 import logging
 import time
+import cv2
 import numpy as np
 from PIL import Image, ImageOps
 
@@ -57,7 +58,8 @@ ENHANCE_PROMPT = (
     "Remove all glare from windows and windshield. Windows should look dark and clear with no glare.\n\n"
 
     "5. CAR COLOR:\n"
-    "   Keep the exact original car color. Do not darken or lighten the paint. "
+    "   Keep the exact original car color including its vibrancy, saturation and brightness. "
+    "Do not flatten or dull the paint finish. Do not darken or lighten the paint. "
     "Do not change the hue or saturation.\n\n"
 
     "6. TIRES:\n"
@@ -75,6 +77,12 @@ ENHANCE_PROMPT = (
     "to any part of the image. All colors must remain true to the original. "
     "If you cannot process a specific area without causing color distortion, leave that area "
     "exactly as it is in the original.\n\n"
+
+    "9. VIBRANCY AND SATURATION:\n"
+    "   The car paint must look vibrant, rich and natural exactly like the original. "
+    "Do not reduce the saturation or vibrancy of the car paint. Do not make the car "
+    "look flat, dull or matte. The car should look shiny and vibrant exactly as it did "
+    "in the original photo.\n\n"
 
     "Return only the edited image with no text or watermarks."
 )
@@ -325,6 +333,62 @@ def _apply_color_correction(original: Image.Image, processed: Image.Image, mask_
     return processed
 
 
+def _apply_saturation_correction(original: Image.Image, processed: Image.Image, mask_np: np.ndarray) -> Image.Image:
+    """Correct saturation and brightness shifts on car area."""
+    orig_np = np.array(original)
+    proc_np = np.array(processed)
+    
+    orig_hsv = cv2.cvtColor(orig_np, cv2.COLOR_RGB2HSV).astype(np.float32)
+    proc_hsv = cv2.cvtColor(proc_np, cv2.COLOR_RGB2HSV).astype(np.float32)
+    
+    if not mask_np.any():
+        return processed
+        
+    s_orig_mean = orig_hsv[mask_np, 1].mean()
+    s_proc_mean = proc_hsv[mask_np, 1].mean()
+    
+    v_orig_mean = orig_hsv[mask_np, 2].mean()
+    v_proc_mean = proc_hsv[mask_np, 2].mean()
+    
+    if s_orig_mean == 0 or s_proc_mean == 0 or v_orig_mean == 0 or v_proc_mean == 0:
+        return processed
+        
+    s_drop = (s_orig_mean - s_proc_mean) / s_orig_mean
+    v_drop = (v_orig_mean - v_proc_mean) / v_orig_mean
+    
+    s_factor = 1.0
+    v_factor = 1.0
+    
+    apply_correction = False
+    
+    if s_drop > 0.10:
+        s_factor = s_orig_mean / s_proc_mean
+        logger.info("Saturation drop >10%% detected. Original S: %.1f, Processed S: %.1f. Applying factor %.2f.", s_orig_mean, s_proc_mean, s_factor)
+        apply_correction = True
+        
+    if v_drop > 0.10:
+        v_factor = v_orig_mean / v_proc_mean
+        logger.info("Brightness (V) drop >10%% detected. Original V: %.1f, Processed V: %.1f. Applying factor %.2f.", v_orig_mean, v_proc_mean, v_factor)
+        apply_correction = True
+        
+    if not apply_correction:
+        return processed
+        
+    corrected_hsv = proc_hsv.copy()
+    
+    if s_factor != 1.0:
+        corrected_hsv[mask_np, 1] = np.clip(corrected_hsv[mask_np, 1] * s_factor, 0, 255)
+    if v_factor != 1.0:
+        corrected_hsv[mask_np, 2] = np.clip(corrected_hsv[mask_np, 2] * v_factor, 0, 255)
+        
+    corrected_rgb = cv2.cvtColor(corrected_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB)
+    
+    final_np = proc_np.copy()
+    final_np[mask_np] = corrected_rgb[mask_np]
+    
+    return Image.fromarray(final_np)
+
+
 def _apply_brightness(pil_img: Image.Image, boost: float) -> Image.Image:
     """Apply brightness boost to image. boost=1.0 means no change, 1.5 means 50% brighter."""
     if boost <= 1.0:
@@ -384,7 +448,7 @@ def process_car_image(
 
     if mode == "enhance-preserve":
         prompt_with_color = prompt + (
-            f"\n\n9. CAR COLOR IS CRITICAL: The car in this image is exactly color RGB approximately ({r}, {g}, {b}). "
+            f"\n\n10. CAR COLOR IS CRITICAL: The car in this image is exactly color RGB approximately ({r}, {g}, {b}). "
             "You must preserve this exact color. Do not lighten, darken or shift the hue under any circumstances. "
             "The output car color must match the input car color exactly."
         )
@@ -407,6 +471,9 @@ def process_car_image(
 
     # Post-processing: exact color correction mapping using RMBG mask
     result_pil = _apply_color_correction(pil_img, result_pil, mask_np)
+
+    # Post-processing: exact saturation/vibrancy mapping using RMBG mask
+    result_pil = _apply_saturation_correction(pil_img, result_pil, mask_np)
 
     # Post-processing: flip detection
     if _is_flipped(pil_img, result_pil):
