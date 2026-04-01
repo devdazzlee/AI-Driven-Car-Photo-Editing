@@ -308,19 +308,25 @@ def _get_average_color(pil_img: Image.Image, mask_np: np.ndarray) -> np.ndarray:
 
 def _restore_car_color(original: Image.Image, gemini_result: Image.Image, mask_np: np.ndarray) -> Image.Image:
     """
-    Restore original car color to Gemini's fully-processed output using LAB color space.
+    Restore original car color to Gemini's fully-processed output using LAB mean shifts.
 
     Gemini handles 100% of the work: reflection removal, background cleaning, everything.
-    This function only corrects the color drift Gemini introduces, without touching
-    Gemini's structural changes (reflections gone, background cleaned).
+    This function ONLY corrects the color drift Gemini introduces via pure mean shifts —
+    no std normalization, no scaling — preserving Gemini's structure (reflections removed).
 
-    LAB strategy applied to car area only:
-      L (brightness) — mean-shift to match original mean.
-          Fixes overall dullness. Preserves Gemini's relative brightness structure
-          (i.e. reflection spots that Gemini darkened stay darkened — reflections stay removed).
-      A, B (hue + saturation) — full statistical transfer (match mean AND std to original).
-          Forces the exact original hue and saturation. Fixes red→brown or red→pink drift.
-      Background pixels — untouched; Gemini's clean background is kept as-is.
+    Why mean-shift only (no std normalization):
+      std normalization multiplies every pixel by orig_std/gem_std.
+      For black/neutral cars this ratio is unstable (both stds are near zero)
+      and amplifies noise into a visible color cast (e.g. black → brownish).
+      A plain mean shift moves the whole color distribution by a fixed offset —
+      stable for every car color including black, white, and grey.
+
+    LAB channels — car area only:
+      L  (brightness) : shift mean → fixes dullness, keeps Gemini's local structure
+                         (reflection spots stay dark = reflections stay removed).
+      A  (red↔green)  : shift mean → corrects hue drift (e.g. red→brown).
+      B  (yellow↔blue): shift mean → corrects hue drift (e.g. blue cast).
+      Background       : untouched — Gemini's clean background kept as-is.
     """
     orig_np   = np.array(original).astype(np.uint8)
     gemini_np = np.array(gemini_result).astype(np.uint8)
@@ -328,38 +334,20 @@ def _restore_car_color(original: Image.Image, gemini_result: Image.Image, mask_n
     orig_lab   = cv2.cvtColor(orig_np,   cv2.COLOR_RGB2Lab).astype(np.float32)
     gemini_lab = cv2.cvtColor(gemini_np, cv2.COLOR_RGB2Lab).astype(np.float32)
 
-    result_lab = gemini_lab.copy()   # start with full Gemini output
+    result_lab = gemini_lab.copy()   # start with full Gemini output (background intact)
 
     if not mask_np.any():
         return gemini_result
 
-    # ── L channel: global mean-shift on car area (brightness, not structure) ──
-    orig_L_mean = orig_lab[mask_np, 0].mean()
-    gem_L_mean  = gemini_lab[mask_np, 0].mean()
-    L_shift = orig_L_mean - gem_L_mean
-    if abs(L_shift) > 3:
-        result_lab[mask_np, 0] = np.clip(gemini_lab[mask_np, 0] + L_shift, 0, 255)
-        logger.info("LAB L-shift: %.1f  (orig_mean=%.1f  gem_mean=%.1f)", L_shift, orig_L_mean, gem_L_mean)
-
-    # ── A, B channels: full statistical transfer (hue + saturation) ──────────
-    for ch, name in [(1, "A"), (2, "B")]:
+    for ch, name in [(0, "L"), (1, "A"), (2, "B")]:
         orig_mean = orig_lab[mask_np, ch].mean()
-        orig_std  = max(orig_lab[mask_np, ch].std(), 1.0)
         gem_mean  = gemini_lab[mask_np, ch].mean()
-        gem_std   = max(gemini_lab[mask_np, ch].std(), 1.0)
+        shift     = orig_mean - gem_mean
+        result_lab[mask_np, ch] = np.clip(gemini_lab[mask_np, ch] + shift, 0, 255)
+        logger.info("LAB %s mean-shift: %+.1f  (orig=%.1f  gem=%.1f)", name, shift, orig_mean, gem_mean)
 
-        result_lab[mask_np, ch] = (
-            (gemini_lab[mask_np, ch] - gem_mean) * (orig_std / gem_std) + orig_mean
-        )
-        logger.info(
-            "LAB %s: orig(%.1f±%.1f) → gem(%.1f±%.1f) corrected",
-            name, orig_mean, orig_std, gem_mean, gem_std,
-        )
-
-    result_lab = np.clip(result_lab, 0, 255)
     result_rgb = cv2.cvtColor(result_lab.astype(np.uint8), cv2.COLOR_Lab2RGB)
-
-    logger.info("Car color restored via LAB transfer — Gemini reflection removal fully preserved")
+    logger.info("Car color restored via LAB mean-shifts — Gemini output structure preserved")
     return Image.fromarray(result_rgb)
 
 
