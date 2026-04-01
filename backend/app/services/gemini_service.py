@@ -306,87 +306,61 @@ def _get_average_color(pil_img: Image.Image, mask_np: np.ndarray) -> np.ndarray:
     return img_np[mask_np].mean(axis=0)
 
 
-def _apply_color_correction(original: Image.Image, processed: Image.Image, mask_np: np.ndarray) -> Image.Image:
-    """Correct color shift using channel-wise ratios on car area."""
-    original_color = _get_average_color(original, mask_np)
-    processed_color = _get_average_color(processed, mask_np)
-    
-    if np.all(original_color == 0) or np.all(processed_color == 0):
-        return processed
+def _restore_car_color(original: Image.Image, gemini_result: Image.Image, mask_np: np.ndarray) -> Image.Image:
+    """
+    Restore original car color to Gemini's fully-processed output using LAB color space.
 
-    shift = np.abs(original_color - processed_color) / (original_color + 1e-6)
-    
-    if np.any(shift > 0.10):
-        logger.info("Color shift >10%% detected. Original RGB: %s, Processed RGB: %s. Applying correction.", 
-                    original_color.round(1), processed_color.round(1))
-        
-        correction_factor = original_color / (processed_color + 1e-6)
-        
-        processed_np = np.array(processed).astype(np.float32)
-        corrected_np = processed_np.copy()
-        
-        corrected_pixels = processed_np[mask_np] * correction_factor
-        corrected_np[mask_np] = np.clip(corrected_pixels, 0, 255)
-        
-        return Image.fromarray(corrected_np.astype(np.uint8))
-    
-    return processed
+    Gemini handles 100% of the work: reflection removal, background cleaning, everything.
+    This function only corrects the color drift Gemini introduces, without touching
+    Gemini's structural changes (reflections gone, background cleaned).
 
+    LAB strategy applied to car area only:
+      L (brightness) — mean-shift to match original mean.
+          Fixes overall dullness. Preserves Gemini's relative brightness structure
+          (i.e. reflection spots that Gemini darkened stay darkened — reflections stay removed).
+      A, B (hue + saturation) — full statistical transfer (match mean AND std to original).
+          Forces the exact original hue and saturation. Fixes red→brown or red→pink drift.
+      Background pixels — untouched; Gemini's clean background is kept as-is.
+    """
+    orig_np   = np.array(original).astype(np.uint8)
+    gemini_np = np.array(gemini_result).astype(np.uint8)
 
-def _apply_saturation_correction(original: Image.Image, processed: Image.Image, mask_np: np.ndarray) -> Image.Image:
-    """Correct saturation and brightness shifts on car area."""
-    orig_np = np.array(original)
-    proc_np = np.array(processed)
-    
-    orig_hsv = cv2.cvtColor(orig_np, cv2.COLOR_RGB2HSV).astype(np.float32)
-    proc_hsv = cv2.cvtColor(proc_np, cv2.COLOR_RGB2HSV).astype(np.float32)
-    
+    orig_lab   = cv2.cvtColor(orig_np,   cv2.COLOR_RGB2Lab).astype(np.float32)
+    gemini_lab = cv2.cvtColor(gemini_np, cv2.COLOR_RGB2Lab).astype(np.float32)
+
+    result_lab = gemini_lab.copy()   # start with full Gemini output
+
     if not mask_np.any():
-        return processed
-        
-    s_orig_mean = orig_hsv[mask_np, 1].mean()
-    s_proc_mean = proc_hsv[mask_np, 1].mean()
-    
-    v_orig_mean = orig_hsv[mask_np, 2].mean()
-    v_proc_mean = proc_hsv[mask_np, 2].mean()
-    
-    if s_orig_mean == 0 or s_proc_mean == 0 or v_orig_mean == 0 or v_proc_mean == 0:
-        return processed
-        
-    s_drop = (s_orig_mean - s_proc_mean) / s_orig_mean
-    v_drop = (v_orig_mean - v_proc_mean) / v_orig_mean
-    
-    s_factor = 1.0
-    v_factor = 1.0
-    
-    apply_correction = False
-    
-    if s_drop > 0.10:
-        s_factor = s_orig_mean / s_proc_mean
-        logger.info("Saturation drop >10%% detected. Original S: %.1f, Processed S: %.1f. Applying factor %.2f.", s_orig_mean, s_proc_mean, s_factor)
-        apply_correction = True
-        
-    if v_drop > 0.10:
-        v_factor = v_orig_mean / v_proc_mean
-        logger.info("Brightness (V) drop >10%% detected. Original V: %.1f, Processed V: %.1f. Applying factor %.2f.", v_orig_mean, v_proc_mean, v_factor)
-        apply_correction = True
-        
-    if not apply_correction:
-        return processed
-        
-    corrected_hsv = proc_hsv.copy()
-    
-    if s_factor != 1.0:
-        corrected_hsv[mask_np, 1] = np.clip(corrected_hsv[mask_np, 1] * s_factor, 0, 255)
-    if v_factor != 1.0:
-        corrected_hsv[mask_np, 2] = np.clip(corrected_hsv[mask_np, 2] * v_factor, 0, 255)
-        
-    corrected_rgb = cv2.cvtColor(corrected_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB)
-    
-    final_np = proc_np.copy()
-    final_np[mask_np] = corrected_rgb[mask_np]
-    
-    return Image.fromarray(final_np)
+        return gemini_result
+
+    # ── L channel: global mean-shift on car area (brightness, not structure) ──
+    orig_L_mean = orig_lab[mask_np, 0].mean()
+    gem_L_mean  = gemini_lab[mask_np, 0].mean()
+    L_shift = orig_L_mean - gem_L_mean
+    if abs(L_shift) > 3:
+        result_lab[mask_np, 0] = np.clip(gemini_lab[mask_np, 0] + L_shift, 0, 255)
+        logger.info("LAB L-shift: %.1f  (orig_mean=%.1f  gem_mean=%.1f)", L_shift, orig_L_mean, gem_L_mean)
+
+    # ── A, B channels: full statistical transfer (hue + saturation) ──────────
+    for ch, name in [(1, "A"), (2, "B")]:
+        orig_mean = orig_lab[mask_np, ch].mean()
+        orig_std  = max(orig_lab[mask_np, ch].std(), 1.0)
+        gem_mean  = gemini_lab[mask_np, ch].mean()
+        gem_std   = max(gemini_lab[mask_np, ch].std(), 1.0)
+
+        result_lab[mask_np, ch] = (
+            (gemini_lab[mask_np, ch] - gem_mean) * (orig_std / gem_std) + orig_mean
+        )
+        logger.info(
+            "LAB %s: orig(%.1f±%.1f) → gem(%.1f±%.1f) corrected",
+            name, orig_mean, orig_std, gem_mean, gem_std,
+        )
+
+    result_lab = np.clip(result_lab, 0, 255)
+    result_rgb = cv2.cvtColor(result_lab.astype(np.uint8), cv2.COLOR_Lab2RGB)
+
+    logger.info("Car color restored via LAB transfer — Gemini reflection removal fully preserved")
+    return Image.fromarray(result_rgb)
 
 
 def _apply_brightness(pil_img: Image.Image, boost: float) -> Image.Image:
@@ -441,19 +415,31 @@ def process_car_image(
     img_bytes = _pil_to_jpeg_bytes(pil_img)
     client = _get_client()
 
-    # NEW: Sample original car color using RMBG mask
+    # Sample original car color and HSV data using RMBG mask
     mask_np = _get_car_mask_rembg(pil_img)
     original_car_color = _get_average_color(pil_img, mask_np)
     r, g, b = int(original_car_color[0]), int(original_car_color[1]), int(original_car_color[2])
 
-    if mode == "enhance-preserve":
-        prompt_with_color = prompt + (
-            f"\n\n10. CAR COLOR IS CRITICAL: The car in this image is exactly color RGB approximately ({r}, {g}, {b}). "
-            "You must preserve this exact color. Do not lighten, darken or shift the hue under any circumstances. "
-            "The output car color must match the input car color exactly."
-        )
+    # Sample HSV saturation and brightness from car area
+    orig_np = np.array(pil_img)
+    orig_hsv = cv2.cvtColor(orig_np, cv2.COLOR_RGB2HSV).astype(np.float32)
+    if mask_np.any():
+        s_val = int(orig_hsv[mask_np, 1].mean())
+        v_val = int(orig_hsv[mask_np, 2].mean())
     else:
-        prompt_with_color = prompt
+        s_val, v_val = 128, 200
+
+    color_instruction = (
+        f"\n\nCAR COLOR IS CRITICAL: The car color is RGB ({r}, {g}, {b}). "
+        f"Saturation level is {s_val}. Brightness level is {v_val}. "
+        "These are the EXACT values you must maintain. The output car must have these exact same values. "
+        "Do not change these under any circumstances."
+    )
+
+    if mode == "enhance-preserve":
+        prompt_with_color = prompt + f"\n\n10." + color_instruction.lstrip()
+    else:
+        prompt_with_color = prompt + color_instruction
 
     response = _call_gemini_with_retry(client, prompt_with_color, img_bytes, aspect, filename)
     result_pil = _extract_image_from_response(response)
@@ -462,18 +448,15 @@ def process_car_image(
     if result_pil.size != pil_img.size:
         result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
 
-    # Post-processing: color accuracy check
+    # Post-processing: color accuracy check (retry if color drifted badly)
     result_pil = _check_color_accuracy(
         pil_img, result_pil, client, prompt_with_color, img_bytes, aspect, filename,
     )
     if result_pil.size != pil_img.size:
         result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
 
-    # Post-processing: exact color correction mapping using RMBG mask
-    result_pil = _apply_color_correction(pil_img, result_pil, mask_np)
-
-    # Post-processing: exact saturation/vibrancy mapping using RMBG mask
-    result_pil = _apply_saturation_correction(pil_img, result_pil, mask_np)
+    # Post-processing: restore original car color to Gemini's output via LAB transfer
+    result_pil = _restore_car_color(pil_img, result_pil, mask_np)
 
     # Post-processing: flip detection
     if _is_flipped(pil_img, result_pil):
