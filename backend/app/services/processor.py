@@ -1,5 +1,7 @@
 """Image processing orchestrator with error handling and logging."""
 
+from __future__ import annotations
+
 import json
 import logging
 import uuid

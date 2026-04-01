@@ -27,64 +27,15 @@ RETRY_DELAY_SECONDS = 10
 # --- Prompts ---
 
 ENHANCE_PROMPT = (
-    "Edit this car dealership photo with these exact instructions:\n\n"
+    "Professional automotive photo retouching. Perform the following edits perfectly:\n\n"
 
-    "1. COMPOSITION AND FRAMING (MOST IMPORTANT RULE — THIS IS CRITICAL):\n"
-    "   - Do NOT change the camera angle, perspective, zoom level, or framing in any way.\n"
-    "   - The car must appear at the exact same size, position and angle as the original.\n"
-    "   - Do not zoom in or out. Do not reframe or reposition the car.\n"
-    "   - Do NOT flip or mirror the image horizontally or vertically.\n"
-    "   - Return the image at exactly the same dimensions as the input.\n"
-    "   - Never cut off bumpers, mirrors, roof, hood, trunk or any other part of the car.\n"
-    "   - Every part visible in the original must remain visible in the output.\n"
-    "   - Do NOT crop, cut off or remove any part of the car. The complete car must be fully visible "
-    "in the final image exactly as in the original. If the car extends to the edge of the original "
-    "image, it must extend to the same edge in the output. Cutting off any part of the car is "
-    "unacceptable.\n\n"
+    "1. STUDIO BACKGROUND: Replace all background walls with a smooth, clean, pure white studio background. Remove all background clutter, doors, and lights.\n"
+    "2. FLOOR: Clean the floor of dirt and tire tracks, but maintain its exact original texture, pattern, and perspective.\n"
+    "3. REMOVE UGLY GLARE: Find every bright white studio light reflection, brilliant specular highlight, and white glare square on the car's body (hood, roof, sides) and glass. Eliminate them completely.\n"
+    "4. RESTORE PAINT: Wherever you removed the white glare, seamlessly paint in the true native color of the car (e.g., if the car is black, fill those spots with deep black paint). Blend it perfectly into the surrounding panels.\n"
+    "5. GLOSSY FINISH: The car must remain deeply glossy, reflective, and beautifully polished. Maintain its exact original contour and shape.\n\n"
 
-    "2. BACKGROUND — WALLS:\n"
-    "   Remove ALL objects from walls without exception. This includes garage doors, door frames, "
-    "hinges, handles, studio lights, light fixtures, cables, wires, trolleys, carts, and any other "
-    "equipment. Make walls completely smooth and white. Nothing should be visible on the walls "
-    "except the wall corner which must remain visible and natural.\n\n"
-
-    "3. BACKGROUND — FLOOR:\n"
-    "   Clean the floor of all dirt, dust, marks, tire tracks and uneven patches. "
-    "Keep the exact same floor color and texture — do not replace with a different material or color. "
-    "Just make it look professionally cleaned.\n\n"
-
-    "4. REFLECTIONS:\n"
-    "   Remove all white light reflections from the hood, roof, doors and fenders. "
-    "Remove all glare from windows and windshield. Windows should look dark and clear with no glare.\n\n"
-
-    "5. CAR COLOR:\n"
-    "   Keep the exact original car color including its vibrancy, saturation and brightness. "
-    "Do not flatten or dull the paint finish. Do not darken or lighten the paint. "
-    "Do not change the hue or saturation.\n\n"
-
-    "6. TIRES:\n"
-    "   Make tires deep black and clean. Remove all dust and discoloration from rubber surface only.\n\n"
-
-    "7. WHEELS AND RIMS:\n"
-    "   Do NOT alter, distort, fill or change wheel covers, hubcaps, rims or spokes in any way. "
-    "Do not fill wheels with black. Do not remove rim details or spokes. "
-    "Do not add or duplicate wheel covers that are not in the original. "
-    "Keep all wheel details exactly as in the original. Any wheel distortion is unacceptable. "
-    "If you cannot clean tires without distorting wheels, leave wheels exactly as they are.\n\n"
-
-    "8. COLOR ACCURACY (THIS IS CRITICAL):\n"
-    "   Do not add any rainbow effects, color shifts, prismatic colors or any color distortion "
-    "to any part of the image. All colors must remain true to the original. "
-    "If you cannot process a specific area without causing color distortion, leave that area "
-    "exactly as it is in the original.\n\n"
-
-    "9. VIBRANCY AND SATURATION:\n"
-    "   The car paint must look vibrant, rich and natural exactly like the original. "
-    "Do not reduce the saturation or vibrancy of the car paint. Do not make the car "
-    "look flat, dull or matte. The car should look shiny and vibrant exactly as it did "
-    "in the original photo.\n\n"
-
-    "Return only the edited image with no text or watermarks."
+    "Return ONLY the edited image."
 )
 
 BACKGROUND_REMOVAL_PROMPT = (
@@ -191,7 +142,7 @@ def _call_gemini_with_retry(client, prompt: str, img_bytes: bytes, aspect: str, 
                     temperature=0.2,
                     top_p=0.85,
                     response_modalities=["TEXT", "IMAGE"],
-                    image_config=types.ImageConfig(aspect_ratio=aspect, image_size="1K"),
+                    image_config=types.ImageConfig(aspect_ratio=aspect),
                     http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS),
                 ),
             )
@@ -261,101 +212,6 @@ def _is_flipped(original: Image.Image, result: Image.Image) -> bool:
     return is_flip
 
 
-def _check_color_accuracy(original: Image.Image, result: Image.Image, client,
-                          prompt: str, img_bytes: bytes, aspect: str, label: str) -> Image.Image:
-    """If color drifted >10%, retry Gemini call once and keep the better result."""
-    orig_avg = np.array(original.resize((64, 64))).mean(axis=(0, 1))
-    res_avg = np.array(result.resize((64, 64))).mean(axis=(0, 1))
-    color_diff = np.abs(orig_avg - res_avg).mean() / 255.0
-
-    if color_diff <= 0.10:
-        return result
-
-    logger.warning("Color drift %.1f%% exceeds 10%% for %s — retrying once", color_diff * 100, label)
-    try:
-        retry_response = _call_gemini_with_retry(client, prompt, img_bytes, aspect, f"{label}[retry]")
-        retry_pil = _extract_image_from_response(retry_response)
-        retry_avg = np.array(retry_pil.resize((64, 64))).mean(axis=(0, 1))
-        retry_diff = np.abs(orig_avg - retry_avg).mean() / 255.0
-        if retry_diff < color_diff:
-            logger.info("Retry better color (%.1f%% vs %.1f%%) for %s", retry_diff * 100, color_diff * 100, label)
-            return retry_pil
-    except Exception:
-        logger.warning("Color retry failed for %s, using first result", label)
-    return result
-
-
-def _get_car_mask_rembg(pil_img: Image.Image) -> np.ndarray:
-    """Get boolean mask of the car using rembg."""
-    try:
-        from rembg import remove
-        mask_pil = remove(pil_img, only_mask=True)
-        if mask_pil.mode != 'L':
-            mask_pil = mask_pil.convert('L')
-        return np.array(mask_pil) > 128
-    except Exception as e:
-        logger.error("Failed to generate RMBG mask: %s", e)
-        return np.ones((pil_img.height, pil_img.width), dtype=bool)
-
-
-def _get_average_color(pil_img: Image.Image, mask_np: np.ndarray) -> np.ndarray:
-    """Get average RGB color of the masked area."""
-    img_np = np.array(pil_img)
-    if not mask_np.any():
-        return np.array([0.0, 0.0, 0.0])
-    return img_np[mask_np].mean(axis=0)
-
-
-def _restore_car_color(original: Image.Image, gemini_result: Image.Image, mask_np: np.ndarray) -> Image.Image:
-    """
-    Restore original car color to Gemini's fully-processed output using LAB mean shifts.
-
-    Gemini handles 100% of the work: reflection removal, background cleaning, everything.
-    This function ONLY corrects the color drift Gemini introduces via pure mean shifts —
-    no std normalization, no scaling — preserving Gemini's structure (reflections removed).
-
-    Why mean-shift only (no std normalization):
-      std normalization multiplies every pixel by orig_std/gem_std.
-      For black/neutral cars this ratio is unstable (both stds are near zero)
-      and amplifies noise into a visible color cast (e.g. black → brownish).
-      A plain mean shift moves the whole color distribution by a fixed offset —
-      stable for every car color including black, white, and grey.
-
-    LAB channels — car area only:
-      L  (brightness) : shift mean → fixes dullness, keeps Gemini's local structure
-                         (reflection spots stay dark = reflections stay removed).
-      A  (red↔green)  : shift mean → corrects hue drift (e.g. red→brown).
-      B  (yellow↔blue): shift mean → corrects hue drift (e.g. blue cast).
-      Background       : untouched — Gemini's clean background kept as-is.
-    """
-    orig_np   = np.array(original).astype(np.uint8)
-    gemini_np = np.array(gemini_result).astype(np.uint8)
-
-    orig_lab   = cv2.cvtColor(orig_np,   cv2.COLOR_RGB2Lab).astype(np.float32)
-    gemini_lab = cv2.cvtColor(gemini_np, cv2.COLOR_RGB2Lab).astype(np.float32)
-
-    result_lab = gemini_lab.copy()   # start with full Gemini output (background intact)
-
-    if not mask_np.any():
-        return gemini_result
-
-    # Median is used instead of mean because reflection pixels (bright white, A≈128, B≈128)
-    # are outliers in the car mask. Mean gets pulled toward neutral by those outliers,
-    # causing wrong shifts for colored cars (red→brown, blue→grey, etc.).
-    # Median ignores outliers — it always reflects the dominant car paint color,
-    # making this correction universal across all car colors.
-    for ch, name in [(0, "L"), (1, "A"), (2, "B")]:
-        orig_median = np.median(orig_lab[mask_np, ch])
-        gem_median  = np.median(gemini_lab[mask_np, ch])
-        shift       = orig_median - gem_median
-        result_lab[mask_np, ch] = np.clip(gemini_lab[mask_np, ch] + shift, 0, 255)
-        logger.info("LAB %s median-shift: %+.1f  (orig=%.1f  gem=%.1f)", name, shift, orig_median, gem_median)
-
-    result_rgb = cv2.cvtColor(result_lab.astype(np.uint8), cv2.COLOR_Lab2RGB)
-    logger.info("Car color restored via LAB median-shifts — works for all car colors")
-    return Image.fromarray(result_rgb)
-
-
 def _apply_brightness(pil_img: Image.Image, boost: float) -> Image.Image:
     """Apply brightness boost to image. boost=1.0 means no change, 1.5 means 50% brighter."""
     if boost <= 1.0:
@@ -365,6 +221,149 @@ def _apply_brightness(pil_img: Image.Image, boost: float) -> Image.Image:
     result = enhancer.enhance(boost)
     logger.info("Applied brightness boost: %.2f", boost)
     return result
+
+
+def _get_car_mask_rembg(pil_img: Image.Image) -> np.ndarray:
+    """
+    Return a boolean car mask using rembg.
+
+    Threshold at > 128 keeps only high-confidence car pixels.
+    The strict threshold is intentional: _restore_car_color builds an extended
+    application mask internally, so median shifts are always computed on clean
+    car pixels only.
+    """
+    try:
+        from rembg import remove
+        mask_pil = remove(pil_img, only_mask=True)
+        if mask_pil.mode != "L":
+            mask_pil = mask_pil.convert("L")
+        return np.array(mask_pil) > 128
+    except Exception as e:
+        logger.error("rembg mask generation failed: %s", e)
+        return np.ones((pil_img.height, pil_img.width), dtype=bool)
+
+
+def _restore_car_color(
+    original: Image.Image,
+    gemini_result: Image.Image,
+    mask_np: np.ndarray,
+) -> Image.Image:
+    """
+    Restore the original car color to Gemini's output using LAB median shifts.
+
+    Gemini handles background removal / reflection cleanup fully. This function
+    corrects the color drift and boundary mis-renders Gemini introduces.
+
+    Only called for standard background-removal mode. Enhance-preserve mode relies
+    entirely on Gemini's output — applying a LAB shift there would re-brighten
+    areas Gemini intentionally darkened (reflection removal), undoing Gemini's work.
+
+    Problems addressed:
+      (A) Colored car boundary bleed (lower bumper / spoiler against dark floor):
+          rembg assigns low confidence → pixels excluded from strict mask → Gemini
+          background-white bleeds into car edge. Fixed by dilation + AB chroma guard.
+
+      (B) Neutral car (black/grey) grey halo on body panels:
+          rembg assigns low confidence to bright-reflection areas near white backdrop
+          → excluded from strict mask. The global shift is too small to fix these.
+          Fixed by dilation + Gemini-brightness guard (grey zone L < 195 = car surface;
+          pure white L ≥ 195 = true background) + bidirectional deviation correction.
+
+      (C) Large local mis-renders in standard mode (standard only):
+          After global shift, pixels where |result_L − orig_L| > 40 are Gemini
+          mistakes (car surface wrongly brightened or darkened). Blended 85% back to
+          original to fix grey halos and white boundary bleeds simultaneously.
+
+    Median vs mean:
+      Reflection pixels (bright white, AB ≈ 128) are outliers inside the car mask.
+      Mean is pulled toward neutral; median ignores outliers and always tracks the
+      dominant paint color, making the correction universal across all car colors.
+    """
+    orig_np   = np.array(original).astype(np.uint8)
+    gemini_np = np.array(gemini_result).astype(np.uint8)
+
+    orig_lab   = cv2.cvtColor(orig_np,   cv2.COLOR_RGB2Lab).astype(np.float32)
+    gemini_lab = cv2.cvtColor(gemini_np, cv2.COLOR_RGB2Lab).astype(np.float32)
+
+    result_lab = gemini_lab.copy()  # start from Gemini output; background stays intact
+
+    if not mask_np.any():
+        return gemini_result
+
+    # --- Step 1: compute median shifts using the strict car mask ---
+    shifts: dict[int, float] = {}
+    for ch, name in [(0, "L"), (1, "A"), (2, "B")]:
+        orig_median = float(np.median(orig_lab[mask_np, ch]))
+        gem_median  = float(np.median(gemini_lab[mask_np, ch]))
+        shifts[ch]  = orig_median - gem_median
+        logger.info("LAB %s median-shift: %+.1f  (orig=%.1f  gem=%.1f)",
+                    name, shifts[ch], orig_median, gem_median)
+
+    # --- Step 2: build extended application mask ---
+    mask_uint8 = mask_np.astype(np.uint8) * 255
+
+    # (a) Closing fills concave voids within the car silhouette
+    close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+    closed_mask  = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, close_kernel) > 128
+
+    car_median_a = float(np.median(orig_lab[mask_np, 1]))
+    car_median_b = float(np.median(orig_lab[mask_np, 2]))
+    car_chroma   = np.sqrt((car_median_a - 128.0) ** 2 + (car_median_b - 128.0) ** 2)
+
+    dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    dilated_mask  = cv2.dilate(mask_uint8, dilate_kernel, iterations=2) > 128
+    boundary_zone = dilated_mask & ~closed_mask
+
+    if car_chroma > 12:
+        # (b-colored) Colored car: AB chroma guard prevents including neutral floor/background.
+        ab_tolerance = max(22.0, car_chroma * 0.9)
+        ab_dist = np.sqrt(
+            (orig_lab[:, :, 1] - car_median_a) ** 2 +
+            (orig_lab[:, :, 2] - car_median_b) ** 2
+        )
+        extended_mask = closed_mask | (boundary_zone & (ab_dist < ab_tolerance))
+        logger.info("Colored car (chroma=%.1f): dilation + AB guard (tol=%.1f)",
+                    car_chroma, ab_tolerance)
+    else:
+        # (b-neutral) Neutral car (black/grey/white/silver): chroma cannot distinguish
+        # car from background. Instead guard on Gemini-output brightness:
+        #   grey zone (L < 195) = car surface Gemini mis-rendered → include
+        #   pure white (L ≥ 195) = true background Gemini correctly placed → exclude
+        gem_not_bg = gemini_lab[:, :, 0] < 195
+        extended_mask = closed_mask | (boundary_zone & gem_not_bg)
+        logger.info("Neutral car (chroma=%.1f): dilation + Gemini-brightness guard", car_chroma)
+
+    # --- Step 3: apply global median shifts to extended mask ---
+    for ch in [0, 1, 2]:
+        result_lab[extended_mask, ch] = np.clip(
+            gemini_lab[extended_mask, ch] + shifts[ch], 0, 255
+        )
+
+    # --- Step 4: pixel-level deviation correction ---
+    # The global shift handles overall color drift but cannot fix large local
+    # Gemini mis-renders (grey halos on dark cars, whitened boundary panels).
+    # In standard mode Gemini must NOT change car appearance — any pixel
+    # deviating > 40 LAB-L from the original is a Gemini mistake: blend 85% back.
+    l_orig   = orig_lab[:, :, 0]
+    l_result = result_lab[:, :, 0]
+    deviation = l_result - l_orig  # +ve = Gemini over-brightened, -ve = Gemini darkened
+    large_dev = extended_mask & (np.abs(deviation) > 40)
+    if large_dev.any():
+        for ch in [0, 1, 2]:
+            result_lab[large_dev, ch] = (
+                orig_lab[large_dev, ch] * 0.85 +
+                result_lab[large_dev, ch] * 0.15
+            )
+        logger.info(
+            "Deviation correction: %d pixels (over-bright=%d, over-dark=%d)",
+            int(large_dev.sum()),
+            int((extended_mask & (deviation > 40)).sum()),
+            int((extended_mask & (deviation < -40)).sum()),
+        )
+
+    result_rgb = cv2.cvtColor(result_lab.astype(np.uint8), cv2.COLOR_Lab2RGB)
+    logger.info("Car color restored via LAB median-shifts with extended mask")
+    return Image.fromarray(result_rgb)
 
 
 # ---------------------------------------------------------------------------
@@ -408,48 +407,24 @@ def process_car_image(
     img_bytes = _pil_to_jpeg_bytes(pil_img)
     client = _get_client()
 
-    # Sample original car color and HSV data using RMBG mask
-    mask_np = _get_car_mask_rembg(pil_img)
-    original_car_color = _get_average_color(pil_img, mask_np)
-    r, g, b = int(original_car_color[0]), int(original_car_color[1]), int(original_car_color[2])
-
-    # Sample HSV saturation and brightness from car area
-    orig_np = np.array(pil_img)
-    orig_hsv = cv2.cvtColor(orig_np, cv2.COLOR_RGB2HSV).astype(np.float32)
-    if mask_np.any():
-        s_val = int(orig_hsv[mask_np, 1].mean())
-        v_val = int(orig_hsv[mask_np, 2].mean())
-    else:
-        s_val, v_val = 128, 200
-
-    color_instruction = (
-        f"\n\nCAR COLOR IS CRITICAL: The car color is RGB ({r}, {g}, {b}). "
-        f"Saturation level is {s_val}. Brightness level is {v_val}. "
-        "These are the EXACT values you must maintain. The output car must have these exact same values. "
-        "Do not change these under any circumstances."
-    )
-
-    if mode == "enhance-preserve":
-        prompt_with_color = prompt + f"\n\n10." + color_instruction.lstrip()
-    else:
-        prompt_with_color = prompt + color_instruction
-
-    response = _call_gemini_with_retry(client, prompt_with_color, img_bytes, aspect, filename)
+    response = _call_gemini_with_retry(client, prompt, img_bytes, aspect, filename)
     result_pil = _extract_image_from_response(response)
 
     # Resize result to match input dimensions
     if result_pil.size != pil_img.size:
         result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
 
-    # Post-processing: color accuracy check (retry if color drifted badly)
-    result_pil = _check_color_accuracy(
-        pil_img, result_pil, client, prompt_with_color, img_bytes, aspect, filename,
-    )
-    if result_pil.size != pil_img.size:
-        result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
-
-    # Post-processing: restore original car color to Gemini's output via LAB transfer
-    result_pil = _restore_car_color(pil_img, result_pil, mask_np)
+    # Post-processing color restoration — standard background-removal mode only.
+    # In enhance-preserve mode Gemini owns the car appearance completely (removes
+    # reflections, corrects color). Applying a LAB shift on top would re-brighten
+    # areas Gemini intentionally darkened, undoing the reflection removal.
+    # For standard mode (background swap to white) Gemini must not change the car,
+    # so any color drift or boundary bleed is corrected here.
+    if mode != "enhance-preserve" and background != "transparent":
+        mask_np = _get_car_mask_rembg(pil_img)
+        result_pil = _restore_car_color(pil_img, result_pil, mask_np)
+        if result_pil.size != pil_img.size:
+            result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
 
     # Post-processing: flip detection
     if _is_flipped(pil_img, result_pil):

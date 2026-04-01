@@ -1,5 +1,7 @@
 """Image loading utilities including RAW (NEF) support."""
 
+from __future__ import annotations
+
 import io
 import logging
 from pathlib import Path

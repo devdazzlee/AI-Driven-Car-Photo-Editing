@@ -8,6 +8,8 @@ Library: google-genai (recommended; google-generativeai is deprecated as of Nov 
 Requirements: pip install google-genai python-dotenv Pillow
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging
@@ -169,7 +171,7 @@ def _run_realtime_api(client, image_files: list[Path], output_path: Path, types)
                 ],
                 config=types.GenerateContentConfig(
                     response_modalities=["TEXT", "IMAGE"],
-                    image_config=types.ImageConfig(aspect_ratio=aspect, image_size="1K"),
+                    image_config=types.ImageConfig(aspect_ratio=aspect),
                 ),
             )
 
@@ -242,7 +244,7 @@ def _run_batch_api(
                     ],
                     "generation_config": {
                         "response_modalities": ["TEXT", "IMAGE"],
-                        "image_config": {"aspect_ratio": aspect, "image_size": "1K"},
+                        "image_config": {"aspect_ratio": aspect},
                     },
                 },
             }
