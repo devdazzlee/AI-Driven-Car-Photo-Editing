@@ -48,10 +48,15 @@ ENHANCE_PROMPT = (
     "equipment. Make walls completely smooth and white. Nothing should be visible on the walls "
     "except the wall corner which must remain visible and natural.\n\n"
 
-    "3. BACKGROUND — FLOOR:\n"
-    "   Clean the floor of all dirt, dust, marks, tire tracks and uneven patches. "
-    "Keep the exact same floor color and texture — do not replace with a different material or color. "
-    "Just make it look professionally cleaned.\n\n"
+    "3. BACKGROUND — FLOOR (THIS IS CRITICAL):\n"
+    "   The floor must look like a freshly-cleaned professional showroom floor — completely dry, "
+    "spotless, and uniform in color and brightness from edge to edge. "
+    "Any variation in floor brightness or color that is NOT caused by the car's own shadow must be "
+    "removed. This includes: water, wet spots, puddles, moisture reflections, bright reflective patches, "
+    "dark damp patches, tire tracks, dirt, dust, oil, scuff marks, and any uneven discoloration. "
+    "The floor should have one single consistent tone throughout with no bright spots, no dark wet areas, "
+    "and no patches of any kind. Keep the same floor material — do not replace with a different surface. "
+    "A uniform, dry, spotlessly clean floor is the only acceptable result.\n\n"
 
     "4. REFLECTIONS:\n"
     "   Remove all white light reflections from the hood, roof, doors and fenders. "
@@ -391,8 +396,6 @@ def process_car_image(
     if pil_img.mode != "RGB":
         pil_img = pil_img.convert("RGB")
 
-    orig_w, orig_h = pil_img.size
-
     # Resize large images for API
     pil_img = _resize_for_api(pil_img)
 
@@ -430,7 +433,7 @@ def process_car_image(
     )
 
     if mode == "enhance-preserve":
-        prompt_with_color = prompt + f"\n\n10." + color_instruction.lstrip()
+        prompt_with_color = prompt + "\n\n10. " + color_instruction.lstrip()
     else:
         prompt_with_color = prompt + color_instruction
 
