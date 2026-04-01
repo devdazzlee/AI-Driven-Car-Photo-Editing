@@ -3,7 +3,9 @@
   "build": {
     "builder": "NIXPACKS",
     "watchPatterns": [
-      "/backend/**"
+      "/backend/**",
+      "/*.json",
+      "/*.toml"
     ]
   },
   "deploy": {
