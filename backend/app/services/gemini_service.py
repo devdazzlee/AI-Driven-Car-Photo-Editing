@@ -339,15 +339,20 @@ def _restore_car_color(original: Image.Image, gemini_result: Image.Image, mask_n
     if not mask_np.any():
         return gemini_result
 
+    # Median is used instead of mean because reflection pixels (bright white, A≈128, B≈128)
+    # are outliers in the car mask. Mean gets pulled toward neutral by those outliers,
+    # causing wrong shifts for colored cars (red→brown, blue→grey, etc.).
+    # Median ignores outliers — it always reflects the dominant car paint color,
+    # making this correction universal across all car colors.
     for ch, name in [(0, "L"), (1, "A"), (2, "B")]:
-        orig_mean = orig_lab[mask_np, ch].mean()
-        gem_mean  = gemini_lab[mask_np, ch].mean()
-        shift     = orig_mean - gem_mean
+        orig_median = np.median(orig_lab[mask_np, ch])
+        gem_median  = np.median(gemini_lab[mask_np, ch])
+        shift       = orig_median - gem_median
         result_lab[mask_np, ch] = np.clip(gemini_lab[mask_np, ch] + shift, 0, 255)
-        logger.info("LAB %s mean-shift: %+.1f  (orig=%.1f  gem=%.1f)", name, shift, orig_mean, gem_mean)
+        logger.info("LAB %s median-shift: %+.1f  (orig=%.1f  gem=%.1f)", name, shift, orig_median, gem_median)
 
     result_rgb = cv2.cvtColor(result_lab.astype(np.uint8), cv2.COLOR_Lab2RGB)
-    logger.info("Car color restored via LAB mean-shifts — Gemini output structure preserved")
+    logger.info("Car color restored via LAB median-shifts — works for all car colors")
     return Image.fromarray(result_rgb)
 
 
