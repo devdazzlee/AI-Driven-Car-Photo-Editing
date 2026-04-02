@@ -29,4 +29,4 @@ MAX_BATCH_SIZE = 50
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Cleanup: delete logs/outputs older than this (hours) to prevent disk bloat
-RETENTION_HOURS = int(os.getenv("RETENTION_HOURS", "24"))
+RETENTION_HOURS = int(os.getenv("RETENTION_HOURS", "1"))
