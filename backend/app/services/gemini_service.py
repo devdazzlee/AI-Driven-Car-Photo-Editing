@@ -5,6 +5,7 @@ Uses Gemini API (gemini-3.1-flash-image-preview) for all image processing.
 Single API call: remove reflections, clean floor, maintain car color, keep walls/floor intact.
 """
 
+import asyncio
 import base64
 import io
 import logging
@@ -23,6 +24,8 @@ REQUEST_TIMEOUT_MS = 360_000  # 6 minutes
 MAX_INPUT_SIZE = 1024  # Match Gemini's 1K output size
 MAX_RETRIES = 3
 RETRY_DELAY_SECONDS = 10
+# Max simultaneous Gemini calls — raise if on paid tier with higher RPM quota
+MAX_CONCURRENT_GEMINI = int(__import__("os").getenv("MAX_CONCURRENT_GEMINI", "5"))
 
 # --- Prompts ---
 
@@ -220,6 +223,49 @@ def _call_gemini_with_retry(client, prompt: str, img_bytes: bytes, aspect: str, 
             ) from e
 
 
+async def _call_gemini_async(client, prompt: str, img_bytes: bytes, aspect: str,
+                            label: str, semaphore: asyncio.Semaphore):
+    """Async Gemini call — allows multiple images to wait on Google's servers simultaneously."""
+    from google.genai import types
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            logger.info("Gemini async attempt %d/%d for %s", attempt, MAX_RETRIES, label)
+            async with semaphore:
+                response = await client.aio.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=[
+                        prompt,
+                        types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"),
+                    ],
+                    config=types.GenerateContentConfig(
+                        temperature=0.2,
+                        top_p=0.85,
+                        response_modalities=["TEXT", "IMAGE"],
+                        image_config=types.ImageConfig(aspect_ratio=aspect, image_size="1K"),
+                        http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS),
+                    ),
+                )
+            return response
+        except Exception as e:
+            error_str = str(e)
+            is_retryable = any(code in error_str for code in (
+                "503", "500", "502", "504", "UNAVAILABLE", "RESOURCE_EXHAUSTED",
+                "timed out", "ReadTimeout", "TimeoutError",
+            ))
+            if is_retryable and attempt < MAX_RETRIES:
+                logger.warning(
+                    "AI server busy (attempt %d/%d) for %s — retrying in %ds...",
+                    attempt, MAX_RETRIES, label, RETRY_DELAY_SECONDS,
+                )
+                await asyncio.sleep(RETRY_DELAY_SECONDS)
+                continue
+            logger.error("Gemini async failed after %d attempts for %s: %s", attempt, label, error_str)
+            raise RuntimeError(
+                "Processing failed due to high server demand. Please try again in a few minutes."
+            ) from e
+
+
 # ---------------------------------------------------------------------------
 # Post-processing checks
 # ---------------------------------------------------------------------------
@@ -411,8 +457,17 @@ def process_car_image(
     img_bytes = _pil_to_jpeg_bytes(pil_img)
     client = _get_client()
 
-    # Sample original car color and HSV data using RMBG mask
-    mask_np = _get_car_mask_rembg(pil_img)
+    # Sample original car color using half-size image for rembg — mask only needs
+    # rough car/background separation for color sampling, full resolution not needed
+    small_img = _resize_for_api(pil_img, max_side=512)
+    small_mask_np = _get_car_mask_rembg(small_img)
+    # Scale mask back to full image size for LAB correction
+    import PIL.Image as _PILImage
+    mask_pil_full = _PILImage.fromarray(small_mask_np.astype(np.uint8) * 255).resize(
+        pil_img.size, _PILImage.Resampling.NEAREST
+    )
+    mask_np = np.array(mask_pil_full) > 128
+
     original_car_color = _get_average_color(pil_img, mask_np)
     r, g, b = int(original_car_color[0]), int(original_car_color[1]), int(original_car_color[2])
 
@@ -444,13 +499,6 @@ def process_car_image(
     if result_pil.size != pil_img.size:
         result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
 
-    # Post-processing: color accuracy check (retry if color drifted badly)
-    result_pil = _check_color_accuracy(
-        pil_img, result_pil, client, prompt_with_color, img_bytes, aspect, filename,
-    )
-    if result_pil.size != pil_img.size:
-        result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
-
     # Post-processing: restore original car color to Gemini's output via LAB transfer
     result_pil = _restore_car_color(pil_img, result_pil, mask_np)
 
@@ -462,6 +510,107 @@ def process_car_image(
     result_pil = _apply_brightness(result_pil, lighting_boost)
 
     # Convert to requested format
+    out_buf = io.BytesIO()
+    fmt = output_format.lower()
+    if fmt == "png":
+        result_pil.save(out_buf, format="PNG")
+    elif fmt in ("jpg", "jpeg"):
+        result_pil.save(out_buf, format="JPEG", quality=95)
+    elif fmt == "webp":
+        result_pil.save(out_buf, format="WEBP", quality=95)
+    else:
+        result_pil.save(out_buf, format="PNG")
+
+    return out_buf.getvalue()
+
+
+async def process_car_image_async(
+    image_data: bytes,
+    filename: str,
+    mode: str = "enhance-preserve",
+    output_format: str = "png",
+    background: str = "white",
+    lighting_boost: float = 1.0,
+    semaphore: asyncio.Semaphore = None,
+) -> bytes:
+    """
+    Async version of process_car_image.
+    Identical output — only the Gemini HTTP call is async so multiple
+    images can wait on Google's servers simultaneously instead of sequentially.
+    """
+    from app.services.image_utils import load_image
+
+    if semaphore is None:
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_GEMINI)
+
+    # All preprocessing is sync CPU work — runs quickly before the async Gemini call
+    loop = asyncio.get_event_loop()
+
+    pil_img = await loop.run_in_executor(None, load_image, image_data, filename)
+    if pil_img.mode != "RGB":
+        pil_img = pil_img.convert("RGB")
+
+    pil_img = _resize_for_api(pil_img)
+
+    if mode == "enhance-preserve":
+        prompt = ENHANCE_PROMPT
+    elif background == "transparent":
+        prompt = BACKGROUND_REMOVAL_TRANSPARENT_PROMPT
+    else:
+        prompt = BACKGROUND_REMOVAL_PROMPT
+
+    w, h = pil_img.size
+    aspect = _aspect_ratio_str(w, h)
+    img_bytes = _pil_to_jpeg_bytes(pil_img)
+    client = _get_client()
+
+    # rembg is CPU-intensive — run in executor so it doesn't block the event loop
+    small_img = _resize_for_api(pil_img, max_side=512)
+    small_mask_np = await loop.run_in_executor(None, _get_car_mask_rembg, small_img)
+
+    import PIL.Image as _PILImage
+    mask_pil_full = _PILImage.fromarray(small_mask_np.astype(np.uint8) * 255).resize(
+        pil_img.size, _PILImage.Resampling.NEAREST
+    )
+    mask_np = np.array(mask_pil_full) > 128
+
+    original_car_color = _get_average_color(pil_img, mask_np)
+    r, g, b = int(original_car_color[0]), int(original_car_color[1]), int(original_car_color[2])
+
+    orig_np = np.array(pil_img)
+    orig_hsv = cv2.cvtColor(orig_np, cv2.COLOR_RGB2HSV).astype(np.float32)
+    if mask_np.any():
+        s_val = int(orig_hsv[mask_np, 1].mean())
+        v_val = int(orig_hsv[mask_np, 2].mean())
+    else:
+        s_val, v_val = 128, 200
+
+    color_instruction = (
+        f"\n\nCAR COLOR IS CRITICAL: The car color is RGB ({r}, {g}, {b}). "
+        f"Saturation level is {s_val}. Brightness level is {v_val}. "
+        "These are the EXACT values you must maintain. The output car must have these exact same values. "
+        "Do not change these under any circumstances."
+    )
+
+    if mode == "enhance-preserve":
+        prompt_with_color = prompt + "\n\n10. " + color_instruction.lstrip()
+    else:
+        prompt_with_color = prompt + color_instruction
+
+    # THE KEY: async Gemini call — all images wait on Google simultaneously
+    response = await _call_gemini_async(client, prompt_with_color, img_bytes, aspect, filename, semaphore)
+    result_pil = _extract_image_from_response(response)
+
+    if result_pil.size != pil_img.size:
+        result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
+
+    result_pil = _restore_car_color(pil_img, result_pil, mask_np)
+
+    if _is_flipped(pil_img, result_pil):
+        result_pil = ImageOps.mirror(result_pil)
+
+    result_pil = _apply_brightness(result_pil, lighting_boost)
+
     out_buf = io.BytesIO()
     fmt = output_format.lower()
     if fmt == "png":

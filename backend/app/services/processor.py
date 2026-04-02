@@ -1,5 +1,6 @@
 """Image processing orchestrator with error handling and logging."""
 
+import asyncio
 import json
 import logging
 import shutil
@@ -12,12 +13,12 @@ from typing import Any
 from PIL import Image
 
 from app.config import LOGS_DIR, OUTPUT_DIR, RETENTION_HOURS
-from app.services.gemini_service import process_car_image
+from app.services.gemini_service import process_car_image, process_car_image_async, MAX_CONCURRENT_GEMINI
 from app.services.image_utils import load_image, RAW_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
-# Single worker for sequential processing (avoids memory spikes on 4GB VPS)
+# Single executor thread for running async batch loops in background
 _executor = ThreadPoolExecutor(max_workers=1)
 
 
@@ -198,14 +199,77 @@ def _cleanup_old_files() -> None:
         logger.info("Cleanup: removed %d old output dirs/logs (retention=%dh)", deleted, RETENTION_HOURS)
 
 
-def _run_batch(job_id: str, images: list[tuple[bytes, str]], opts: dict) -> None:
-    """Background worker: process all images for a job."""
+async def _process_single_async(
+    image_data: bytes,
+    filename: str,
+    job_id: str,
+    opts: dict,
+    semaphore: asyncio.Semaphore,
+) -> dict[str, Any]:
+    """Async version of _process_single — Gemini call is awaited, not blocked."""
+    log = _jobs.get(job_id)
+    fmt = opts.get("output_format", "png").lower()
+    bg = opts.get("background", "white").lower()
+    mode = opts.get("processing_mode", "standard").lower()
+    try:
+        lb = float(opts.get("lighting_boost", "1.0"))
+    except (TypeError, ValueError):
+        lb = 1.0
+
+    logger.info("Processing %s async with mode=%s, format=%s", filename, mode, fmt)
+
+    if mode == "keep-floor-walls":
+        # keep-floor-walls has no Gemini call — run sync path directly
+        return _process_single(image_data, filename, job_id, opts)
+
+    ext = "png" if fmt == "png" else "jpg" if fmt in ("jpeg", "jpg") else "webp"
+    output_filename = f"{Path(filename).stem}_processed.{ext}"
+    output_path = OUTPUT_DIR / job_id / output_filename
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        result_bytes = await process_car_image_async(
+            image_data,
+            filename=filename,
+            mode=mode if mode == "enhance-preserve" else "standard",
+            output_format=ext,
+            background=bg,
+            lighting_boost=lb,
+            semaphore=semaphore,
+        )
+        output_path.write_bytes(result_bytes)
+        result = {"original_filename": filename, "processed_filename": output_filename, "success": True}
+        preview = _save_raw_preview(image_data, filename, job_id)
+        if preview:
+            result["original_preview"] = preview
+        if log:
+            log.completed += 1
+            log.results.append(result)
+        return result
+    except Exception as e:
+        logger.exception("Async processing failed for %s", filename)
+        failed_entry = {"filename": filename, "error": str(e), "success": False}
+        if log:
+            log.failed.append(failed_entry)
+        return failed_entry
+
+
+async def _run_batch_async(job_id: str, images: list[tuple[bytes, str]], opts: dict) -> None:
+    """Async batch runner — all Gemini calls fire simultaneously, not sequentially."""
     log = _jobs.get(job_id)
     if not log:
         return
     log.status = "processing"
-    for image_data, filename in images:
-        _process_single(image_data, filename, job_id, opts)
+
+    # One shared semaphore limits concurrent Gemini calls across all images
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_GEMINI)
+
+    tasks = [
+        _process_single_async(image_data, filename, job_id, opts, semaphore)
+        for image_data, filename in images
+    ]
+    await asyncio.gather(*tasks)
+
     log.status = "completed"
     log.finished_at = datetime.utcnow().isoformat()
     log_path = LOGS_DIR / f"{job_id}.json"
@@ -213,10 +277,16 @@ def _run_batch(job_id: str, images: list[tuple[bytes, str]], opts: dict) -> None
     _cleanup_old_files()
 
 
+def _run_batch(job_id: str, images: list[tuple[bytes, str]], opts: dict) -> None:
+    """Background thread entry point — runs the async batch in its own event loop."""
+    asyncio.run(_run_batch_async(job_id, images, opts))
+
+
 def start_batch(images: list[tuple[bytes, str]], opts: dict | None = None) -> str:
     """
     Start batch processing in background. Returns job_id immediately.
     Frontend polls /api/status/{job_id} for progress.
+    All Gemini calls run concurrently via asyncio.
     """
     job_id = str(uuid.uuid4())
     log = ProcessingLog(job_id, total=len(images))
@@ -225,18 +295,28 @@ def start_batch(images: list[tuple[bytes, str]], opts: dict | None = None) -> st
     return job_id
 
 
-def process_sync(images: list[tuple[bytes, str]], opts: dict | None = None) -> dict[str, Any]:
+async def _process_sync_async(images: list[tuple[bytes, str]], opts: dict, job_id: str) -> None:
+    """Async core for process_sync — concurrent Gemini calls even for small batches."""
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_GEMINI)
+    tasks = [
+        _process_single_async(image_data, filename, job_id, opts, semaphore)
+        for image_data, filename in images
+    ]
+    await asyncio.gather(*tasks)
+
+
+async def process_sync(images: list[tuple[bytes, str]], opts: dict | None = None) -> dict[str, Any]:
     """
-    Process images synchronously (single or small batch).
-    Use for 1-3 images when instant response is preferred.
+    Process images concurrently (1-3 images).
+    All Gemini calls fire simultaneously via asyncio.
+    Called from FastAPI async endpoint — no asyncio.run() needed.
     """
     opts = opts or {}
     job_id = str(uuid.uuid4())
     log = ProcessingLog(job_id, total=len(images))
     _jobs[job_id] = log
     log.status = "processing"
-    for image_data, filename in images:
-        _process_single(image_data, filename, job_id, opts)
+    await _process_sync_async(images, opts, job_id)
     log.status = "completed"
     log.finished_at = datetime.utcnow().isoformat()
     log_path = LOGS_DIR / f"{job_id}.json"

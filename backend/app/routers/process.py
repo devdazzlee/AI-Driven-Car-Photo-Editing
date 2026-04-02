@@ -70,7 +70,7 @@ async def process_images(
 
     # Small batches: sync. Large: async with job_id
     if len(images) <= 3:
-        result = process_sync(images, opts)
+        result = await process_sync(images, opts)
         return result
 
     job_id = start_batch(images, opts)
