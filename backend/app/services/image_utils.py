@@ -57,27 +57,34 @@ def _extract_embedded_jpeg(data: bytes) -> bytes | None:
 def _load_raw(data: bytes, filename: str) -> Image.Image:
     """Decode RAW (NEF/ARW/CR2/DNG) to RGB PIL Image.
 
-    Tries rawpy first for full-quality decode. If rawpy is unavailable or blocked
-    (e.g. by Windows Application Control), falls back to extracting the embedded
-    JPEG preview that all RAW files contain.
-    """
-    # Try rawpy first for best quality
-    try:
-        import rawpy
-        with rawpy.imread(io.BytesIO(data)) as raw:
-            rgb = raw.postprocess(use_camera_wb=True)
-        import numpy as np
-        return Image.fromarray(rgb)
-    except (ImportError, OSError) as e:
-        logger.warning("rawpy unavailable (%s), falling back to embedded JPEG extraction for %s", e, filename)
+    Uses the embedded JPEG preview as the primary source. Every RAW file contains
+    a full-resolution JPEG processed by the camera's own pipeline (Nikon Picture
+    Control, white balance, tone curve) — this is exactly what the photographer
+    saw and the correct brightness/color representation.
 
-    # Fallback: extract embedded JPEG preview from RAW file
+    rawpy's mathematical decode produces a flat, ~40% darker result because it
+    does not apply the camera manufacturer's proprietary tone curves. Using the
+    embedded JPEG avoids this brightness mismatch entirely.
+
+    Falls back to rawpy only if no embedded JPEG is found (rare edge case).
+    """
+    # Primary: embedded JPEG — camera-processed, correct brightness and color
     jpeg_data = _extract_embedded_jpeg(data)
-    if jpeg_data and len(jpeg_data) > 10000:  # sanity check: must be a real image
-        logger.info("Extracted embedded JPEG preview (%d bytes) from %s", len(jpeg_data), filename)
+    if jpeg_data and len(jpeg_data) > 10000:
+        logger.info("Loaded embedded JPEG preview (%d bytes) from %s", len(jpeg_data), filename)
         return Image.open(io.BytesIO(jpeg_data)).convert("RGB")
 
+    # Fallback: rawpy decode if no embedded JPEG found
+    try:
+        import rawpy
+        import numpy as np
+        with rawpy.imread(io.BytesIO(data)) as raw:
+            rgb = raw.postprocess(use_camera_wb=True)
+        logger.info("Loaded via rawpy decode for %s", filename)
+        return Image.fromarray(rgb)
+    except (ImportError, OSError) as e:
+        logger.warning("rawpy unavailable (%s) for %s", e, filename)
+
     raise ValueError(
-        f"Cannot load RAW file {filename}: rawpy is blocked by Windows Application Control "
-        "and no embedded JPEG preview was found. Try converting the file to JPEG first."
+        f"Cannot load RAW file {filename}: no embedded JPEG found and rawpy is unavailable."
     )
