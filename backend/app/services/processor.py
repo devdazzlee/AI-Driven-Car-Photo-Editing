@@ -2,15 +2,16 @@
 
 import json
 import logging
+import shutil
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from PIL import Image
 
-from app.config import LOGS_DIR, OUTPUT_DIR
+from app.config import LOGS_DIR, OUTPUT_DIR, RETENTION_HOURS
 from app.services.gemini_service import process_car_image
 from app.services.image_utils import load_image, RAW_EXTENSIONS
 
@@ -181,6 +182,22 @@ def _process_single(
         return failed_entry
 
 
+def _cleanup_old_files() -> None:
+    """Delete output folders and log files older than RETENTION_HOURS."""
+    cutoff = datetime.now(timezone.utc).timestamp() - RETENTION_HOURS * 3600
+    deleted = 0
+    for job_dir in OUTPUT_DIR.iterdir():
+        if job_dir.is_dir() and job_dir.stat().st_mtime < cutoff:
+            shutil.rmtree(job_dir, ignore_errors=True)
+            deleted += 1
+    for log_file in LOGS_DIR.glob("*.json"):
+        if log_file.stat().st_mtime < cutoff:
+            log_file.unlink(missing_ok=True)
+            deleted += 1
+    if deleted:
+        logger.info("Cleanup: removed %d old output dirs/logs (retention=%dh)", deleted, RETENTION_HOURS)
+
+
 def _run_batch(job_id: str, images: list[tuple[bytes, str]], opts: dict) -> None:
     """Background worker: process all images for a job."""
     log = _jobs.get(job_id)
@@ -193,6 +210,7 @@ def _run_batch(job_id: str, images: list[tuple[bytes, str]], opts: dict) -> None
     log.finished_at = datetime.utcnow().isoformat()
     log_path = LOGS_DIR / f"{job_id}.json"
     log_path.write_text(json.dumps(log.to_dict(), indent=2))
+    _cleanup_old_files()
 
 
 def start_batch(images: list[tuple[bytes, str]], opts: dict | None = None) -> str:
@@ -223,6 +241,7 @@ def process_sync(images: list[tuple[bytes, str]], opts: dict | None = None) -> d
     log.finished_at = datetime.utcnow().isoformat()
     log_path = LOGS_DIR / f"{job_id}.json"
     log_path.write_text(json.dumps(log.to_dict(), indent=2))
+    _cleanup_old_files()
     return {
         "job_id": job_id,
         "total": log.total,
