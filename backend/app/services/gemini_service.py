@@ -290,25 +290,11 @@ def _check_color_accuracy(original: Image.Image, result: Image.Image, client,
     return result
 
 
-# Cached rembg session — model loads once at first use, not on every request
-_rembg_session = None
-
-def _get_rembg_session():
-    """Load rembg session once and reuse. u2netp is the lighter model (~5MB vs 170MB for u2net)."""
-    global _rembg_session
-    if _rembg_session is None:
-        from rembg import new_session
-        _rembg_session = new_session("u2netp")
-        logger.info("rembg session loaded (u2netp model)")
-    return _rembg_session
-
-
 def _get_car_mask_rembg(pil_img: Image.Image) -> np.ndarray:
     """Get boolean mask of the car using rembg."""
     try:
         from rembg import remove
-        session = _get_rembg_session()
-        mask_pil = remove(pil_img, only_mask=True, session=session)
+        mask_pil = remove(pil_img, only_mask=True)
         if mask_pil.mode != 'L':
             mask_pil = mask_pil.convert('L')
         return np.array(mask_pil) > 128
