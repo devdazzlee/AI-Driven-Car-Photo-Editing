@@ -93,5 +93,12 @@ async def download(job_id: str, filename: str):
     if not path:
         raise HTTPException(404, "File not found")
     ext = path.suffix.lower()
-    media_type = "image/jpeg" if ext in (".jpg", ".jpeg") else "image/webp" if ext == ".webp" else "image/png"
+    if ext in (".jpg", ".jpeg"):
+        media_type = "image/jpeg"
+    elif ext == ".webp":
+        media_type = "image/webp"
+    elif ext in (".tif", ".tiff"):
+        media_type = "image/tiff"
+    else:
+        media_type = "image/png"
     return FileResponse(path, filename=filename, media_type=media_type)

@@ -62,7 +62,7 @@ def _save_raw_preview(image_data: bytes, filename: str, job_id: str) -> str | No
     img = load_image(image_data, filename)
     if img.mode != "RGB":
         img = img.convert("RGB")
-    img.save(preview_path, format="PNG")
+    img.save(preview_path, format="PNG", compress_level=0)
     return preview_filename
 
 
@@ -86,16 +86,24 @@ def _process_single(
 
     if mode == "keep-floor-walls":
         # Preserve original: floor, walls, corner - no background removal
-        ext = "png" if fmt == "png" else "jpg" if fmt in ("jpeg", "jpg") else "webp"
+        ext = ("jpg" if fmt in ("jpg", "jpeg") else
+               "tif" if fmt in ("tif", "tiff", "nef") else
+               "webp" if fmt == "webp" else "png")
         output_filename = f"{Path(filename).stem}_processed.{ext}"
         output_path = OUTPUT_DIR / job_id / output_filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             img = load_image(image_data, filename)  # Handles NEF, PNG, JPEG, WebP
-            if ext in ("jpg", "jpeg") and img.mode != "RGB":
+            if ext == "jpg" and img.mode != "RGB":
                 img = img.convert("RGB")
-            save_fmt = "JPEG" if ext in ("jpg", "jpeg") else ext.upper()
-            img.save(output_path, format=save_fmt, quality=95)
+            if ext == "jpg":
+                img.save(output_path, format="JPEG", quality=100, subsampling=0)
+            elif ext == "tif":
+                img.save(output_path, format="TIFF", compression="tiff_lzw")
+            elif ext == "webp":
+                img.save(output_path, format="WEBP", quality=100)
+            else:
+                img.save(output_path, format="PNG", compress_level=0)
             result = {"original_filename": filename, "processed_filename": output_filename, "success": True}
             preview = _save_raw_preview(image_data, filename, job_id)
             if preview:
@@ -116,7 +124,9 @@ def _process_single(
         # Lazy import: skimage inpaint can fail on Windows (DLL blocked by App Control)
         from app.services.enhance_preserve_service import enhance_preserve_service
 
-        ext = "png" if fmt == "png" else "jpg" if fmt in ("jpeg", "jpg") else "webp"
+        ext = ("jpg" if fmt in ("jpg", "jpeg") else
+               "tif" if fmt in ("tif", "tiff", "nef") else
+               "webp" if fmt == "webp" else "png")
         output_filename = f"{Path(filename).stem}_processed.{ext}"
         output_path = OUTPUT_DIR / job_id / output_filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +157,9 @@ def _process_single(
     if bg == "transparent":
         ext = "png"  # Transparency only supported in PNG
     else:
-        ext = "png" if fmt == "png" else "jpg" if fmt in ("jpeg", "jpg") else "webp"
+        ext = ("jpg" if fmt in ("jpg", "jpeg") else
+               "tif" if fmt in ("tif", "tiff", "nef") else
+               "webp" if fmt == "webp" else "png")
     output_filename = f"{Path(filename).stem}_processed.{ext}"
     output_path = OUTPUT_DIR / job_id / output_filename
     output_path.parent.mkdir(parents=True, exist_ok=True)
