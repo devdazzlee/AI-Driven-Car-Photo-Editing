@@ -30,69 +30,275 @@ RETRY_DELAY_SECONDS = 10
 ENHANCE_PROMPT = (
     "Edit this car dealership photo with these exact instructions:\n\n"
 
-    "1. COMPOSITION AND FRAMING (MOST IMPORTANT RULE — THIS IS CRITICAL):\n"
-    "   - Do NOT change the camera angle, perspective, zoom level, or framing in any way.\n"
-    "   - The car must appear at the exact same size, position and angle as the original.\n"
-    "   - Do not zoom in or out. Do not reframe or reposition the car.\n"
+    "STEP A — SAMPLE AND LOCK THE CAR'S TRUE PAINT COLOR (DO THIS FIRST, BEFORE ANY EDITING):\n"
+    "Before making any changes, look at the car and find the DARKEST, LEAST-AFFECTED area of "
+    "each major painted panel — the area least hit by studio light. That darkest area is the "
+    "car's TRUE paint color. Memorize it. Every reflection you remove must be replaced with "
+    "EXACTLY this true color — not a lighter version, not a different shade. The true color "
+    "is your anchor. You must not drift from it.\n"
+    "   - BLACK/VERY DARK car: true color = deepest black area on any door or fender bottom edge\n"
+    "   - DARK BLUE/NAVY car: true color = deepest blue area, NOT the lighter blue-grey zones\n"
+    "   - DARK GREEN car: true color = deepest green area on the panel bottom\n"
+    "   - WHITE car: true color = the smooth even white away from any bright blobs\n"
+    "   - GREY/SILVER car: true color = the mid-tone metallic grey in the least-lit zone\n"
+    "   - ANY OTHER COLOR: true color = the richest, most saturated area of that color on the panel\n"
+    "CRITICAL: Studio lights always make paint look LIGHTER than its true color. The true color "
+    "is always the DARKER, MORE SATURATED version you see in shadow areas or panel bottom edges. "
+    "Never use a light/bright zone as your reference — that zone is contaminated by studio light.\n\n"
+
+    "STEP B — MEMORIZE THE FLOOR IDENTITY (FOR VERIFICATION — NOT FOR REGENERATION):\n"
+    "Immediately after locking the car color, look at the floor in the input image and "
+    "memorize these specific properties — you will use them to verify your output:\n"
+    "   1. TILE SIZE: Large tiles (30cm+)? Medium? Small? Measure relative to the car wheel.\n"
+    "   2. TILE MATERIAL: Stone/slate with texture? Smooth concrete? Ceramic? Rough or smooth?\n"
+    "   3. TILE COLOR: Dominant color — dark grey-brown? Light grey? Beige? Be specific.\n"
+    "   4. TILE DARKNESS: How dark overall on a scale 1-10?\n"
+    "   5. GROUT: Wide grout lines? Narrow? Same color as tile or contrasting?\n"
+    "These five values = the FLOOR IDENTITY. Your output floor must match ALL FIVE.\n"
+    "This is a READ-ONLY record for verification. It does NOT give you permission to "
+    "recolor, regenerate, or reimagine the floor. The floor must stay exactly as it is.\n\n"
+
+    "1. COMPOSITION AND FRAMING — THE CAR MUST NOT MOVE (ABSOLUTE RULE):\n"
+    "   This is not a creative photo shoot. You are editing the background only. "
+    "The car's position, angle, and framing are LOCKED and must not change under any circumstances.\n"
+    "   - Do NOT change the camera angle, perspective, zoom level, or viewing angle.\n"
+    "   - The car's viewing angle in the output must be IDENTICAL to the input. "
+    "If the input shows a front-left three-quarter view, the output must show the same "
+    "front-left three-quarter view — not more front-on, not more side-on. Same exact angle.\n"
+    "   - Do NOT rotate or reposition the car. Do NOT zoom in or out. "
+    "Do NOT reframe or recompose the shot.\n"
     "   - Do NOT flip or mirror the image horizontally or vertically.\n"
-    "   - Return the image at exactly the same dimensions as the input.\n"
+    "   - CRITICAL: Even when removing the garage door, studio equipment, or cleaning the "
+    "background — the car must NOT move. When background elements are removed and replaced "
+    "with white, the car stays in exactly the same pixel position it was in the input. "
+    "Do not adjust the car's position to 'fill' the cleaned background area.\n"
+    "   - The license plate must appear at the exact same position and size in the frame.\n"
     "   - Never cut off bumpers, mirrors, roof, hood, trunk or any other part of the car.\n"
-    "   - Every part visible in the original must remain visible in the output.\n"
-    "   - Do NOT crop, cut off or remove any part of the car. The complete car must be fully visible "
-    "in the final image exactly as in the original. If the car extends to the edge of the original "
-    "image, it must extend to the same edge in the output. Cutting off any part of the car is "
-    "unacceptable.\n\n"
+    "   - Every part visible in the original must remain visible and in the same position.\n"
+    "   - Return the image at exactly the same dimensions as the input.\n\n"
 
     "2. BACKGROUND — WALLS AND CEILING:\n"
-    "   Remove ALL objects from walls and ceiling without exception. This includes garage doors, "
-    "door frames, hinges, handles, studio lights, light fixtures, ceiling rigs, lighting rails, "
-    "cables, wires, trolleys, carts, and any other equipment. "
-    "Make walls and ceiling completely flat, solid white — a single uniform white with no variation. "
-    "The entire background must be one flat white color from top to bottom and edge to edge. "
-    "Do NOT add any gradients, curved shadows, arcs, dark transitions, or tonal variations anywhere "
-    "in the background. Do NOT render any room shape, ceiling curve, or architectural feature. "
-    "Do NOT add any vignetting or darkening near the top or edges of the image. "
-    "The background must look like a pure flat white photography backdrop — perfectly uniform. "
-    "The only exception is the wall-floor corner which must remain visible and natural.\n\n"
+    "   *** STEP ZERO — DO THIS FIRST, BEFORE ANYTHING ELSE ***\n"
+    "   Look at the upper portion of this photo. You will see a LARGE GREY DOME SHAPE — a wide "
+    "curved arc or oval shadow that fills much of the upper background. This is a cyclorama studio "
+    "shadow. Your very first action must be: PAINT IT PURE WHITE. Every single grey pixel in the "
+    "wall and ceiling area — paint it #FFFFFF (255, 255, 255). Do this before touching the car, "
+    "before removing reflections, before anything else.\n"
+    "   The target result looks like this: the car is parked in front of a completely plain, flat, "
+    "white wall — like white copy paper behind the car. No curves, no shadows, no dome, no grey. "
+    "Pure blank white behind and above the car.\n\n"
+    "   AFTER PAINTING BACKGROUND WHITE — VERIFY BEFORE CONTINUING:\n"
+    "   Look at the top half of your output. Ask yourself: do I see ANY grey shape, curved arc, "
+    "dome, gradient, or shadow in the background? If YES — paint it white. Do not proceed to "
+    "step 3 or 4 until the answer is NO. The background is only complete when it is pure flat "
+    "white with absolutely no grey anywhere.\n\n"
+    "   RULE A — ALSO REMOVE ALL OF THESE (replace every item below with pure white #FFFFFF):\n"
+    "   GARAGE DOOR: If you see a garage door in the background — a large rectangular door "
+    "with horizontal panel sections and metal hinges, typically on the right or left side of "
+    "the background — REPLACE IT ENTIRELY WITH FLAT WHITE. The entire garage door and its "
+    "frame must disappear and become pure white. This is not optional.\n"
+    "   ALSO REMOVE: Studio lights, light fixtures, ceiling rigs, overhead cables, "
+    "door frames, hinges, handles, and any other equipment mounted on walls or ceiling.\n"
+    "   CRITICAL EXCEPTION — DO NOT REMOVE CAR PARTS: Never remove any element physically "
+    "attached to the car. This includes WITHOUT EXCEPTION:\n"
+    "     * Radio antenna, shark fin antenna, mast antenna on the roof\n"
+    "     * Windshield wipers, side mirror mounts, roof rails\n"
+    "     * STEP BARS and RUNNING BOARDS — the metal bars/steps running along the bottom "
+    "side of vans, trucks, and SUVs that help passengers step up into the vehicle. "
+    "These are car components, NOT studio equipment. Do NOT remove them.\n"
+    "     * Ladder racks, roof cargo racks mounted ON THE VEHICLE (not on the studio wall)\n"
+    "     * Any trim, panel, or component touching or part of the car body\n"
+    "   Only remove objects that are mounted on the WALL or CEILING of the studio.\n"
+    "   RULE B — THE RESULT: The entire wall and ceiling area = perfectly flat pure white "
+    "#FFFFFF. No variation. No grey. No gradients. No curved shapes. No shadows anywhere. "
+    "Every off-white, grey, or tinted pixel above the floor level (that is not the car) "
+    "must be #FFFFFF. This is non-negotiable.\n"
+    "   The ONLY exception: the wall-floor junction line may remain visible and natural.\n\n"
 
-    "3. BACKGROUND — FLOOR (ABSOLUTE RULE — DO NOT VIOLATE):\n"
-    "   THE FLOOR COLOR, BRIGHTNESS, AND TONE MUST BE 100% IDENTICAL TO THE ORIGINAL IMAGE.\n"
-    "   This is non-negotiable. The floor in your output must look like the same physical floor "
-    "as in the original photo — same color, same shade, same brightness level.\n"
-    "   What you MAY do to the floor (ONLY these things):\n"
-    "     - Remove puddles, standing water, wet spots, and moisture reflections\n"
-    "     - Remove visible tire marks, oil stains, or dirt smudges\n"
-    "   What you MUST NEVER do to the floor:\n"
-    "     - NEVER change the floor color (not even slightly)\n"
-    "     - NEVER lighten or brighten the floor\n"
-    "     - NEVER darken the floor\n"
-    "     - NEVER make the floor look uniform, studio-style, or flat\n"
-    "     - NEVER replace the floor material or texture\n"
-    "     - NEVER add gradients or vignette to the floor\n"
-    "   The floor's natural variation in tone (from perspective, distance, shadows) is CORRECT "
-    "and must be preserved exactly as in the original. Do not flatten or homogenize it.\n"
-    "   EXACT COLOR RULE: The floor RGB color will be provided below. Your output floor "
-    "MUST match it. If the floor is dark grey (e.g. RGB 80,80,80) — keep it dark grey. "
-    "If the floor is light grey — keep it light grey. If the floor is concrete-colored — "
-    "keep it concrete-colored. Any floor color change from the original is unacceptable.\n\n"
+    "3. BACKGROUND — FLOOR:\n\n"
+    "   *** IMPORTANT — THE FLOOR IN THIS IMAGE HAS ALREADY BEEN PRE-CLEANED ***:\n"
+    "   This image has been through a floor-cleaning pre-process. The floor you see in this "
+    "input image is ALREADY CLEAN. The floor color you see IS CORRECT — it matches the "
+    "original tile color.\n"
+    "   YOUR JOB FOR THE FLOOR: PRESERVE IT EXACTLY. Do NOT re-clean it, do NOT 'improve' it, "
+    "do NOT make it darker, do NOT make it lighter. The floor in your output must look "
+    "IDENTICAL to the floor in this input — same color, same tile shade, same darkness.\n"
+    "   WARNING: Do not default to a darker or more 'professional' floor color. The shade "
+    "of grey (or other color) you see in this input IS the correct shade. Preserve it.\n\n"
 
-    "4. REFLECTIONS:\n"
-    "   Remove all white light reflections from the hood, roof, doors and fenders. "
-    "Remove all glare and bright spots from ALL glass surfaces: front windshield, rear window, "
-    "side windows, and quarter windows. Every glass surface must look dark, deep and clear "
-    "with no bright reflections, no white glare patches and no light spots of any kind. "
-    "The rear window in particular must be dark and reflection-free.\n"
-    "   IMPORTANT — DO NOT TOUCH CHROME OR METALLIC TRIM: "
-    "Chrome moldings, chrome strips, chrome accents, metallic trim pieces, and any decorative metallic elements on the car body are NOT reflections. "
-    "Do NOT remove, dull, darken, or alter any chrome or metallic trim. "
-    "These are design features of the car and must remain exactly as they appear in the original — shiny, reflective and bright. "
-    "Only remove unwanted studio light reflections from painted body panels. "
-    "Never touch any chrome or metallic decorative elements.\n\n"
+    "   THE PRIMARY RULE FOR FLOOR IN THIS STAGE: Copy it exactly. "
+    "The floor color, tile shade, tile darkness, tile material, grout — ALL must be PIXEL-IDENTICAL "
+    "to what you see in this input image. Do not make it darker. Do not make it lighter. "
+    "Do not 'improve' it. Just copy it faithfully into the output.\n\n"
+    "   FORBIDDEN FLOOR CHANGES — any of these = edit has FAILED:\n"
+    "   - Output floor is darker than input floor → FORBIDDEN\n"
+    "   - Output floor is lighter than input floor → FORBIDDEN\n"
+    "   - Output tiles are a different size → FORBIDDEN\n"
+    "   - Output tile material changed → FORBIDDEN\n"
+    "   - Output grout is different → FORBIDDEN\n\n"
+    "   IF you spot any remaining dirty mark the pre-clean missed:\n"
+    "   Remove it by filling with the IMMEDIATELY ADJACENT tile color. "
+    "Do not use a darker or lighter fill — match the surrounding tiles exactly. "
+    "Check under the car, between tires, in front of bumper — all zones.\n\n"
+    "   FLOOR VERIFICATION:\n"
+    "   [ ] Floor tile color same darkness/lightness as this input image?\n"
+    "   [ ] Floor tile material/size unchanged?\n"
+    "   [ ] Zero dirty spots remaining?\n"
+    "   If floor color changed (darker or lighter) → REDO floor section.\n\n"
 
-    "5. CAR COLOR:\n"
-    "   Keep the exact original car color including its vibrancy, saturation and brightness. "
-    "Do not flatten or dull the paint finish. Do not darken or lighten the paint. "
-    "Do not change the hue or saturation.\n\n"
+    "4. REFLECTIONS — REMOVE STUDIO LIGHT HOTSPOTS WITHOUT CHANGING THE CAR'S COLOR:\n"
+    "   You sampled and locked the true paint color above. Now use it.\n\n"
+
+    "   THE ABSOLUTE RULE — COLOR MUST NOT CHANGE:\n"
+    "   Reflection removal means ONLY removing the overexposed brightness added by studio lights. "
+    "It does NOT mean repainting the car. After reflection removal:\n"
+    "   → The car's base paint color must be IDENTICAL to the original\n"
+    "   → A dark navy car must still be dark navy — not lighter blue, not grey-blue\n"
+    "   → A black car must still be black — not dark grey, not charcoal\n"
+    "   → A white car must still be the same white — not brighter, not duller\n"
+    "   → ANY color shift in the paint after processing = you changed the car color = WRONG\n"
+    "   Fill every removed hotspot with the TRUE paint color you locked above — the darkest, "
+    "most saturated version from the unaffected panel edges and bottom areas.\n\n"
+
+    "   HOW TO REMOVE A REFLECTION WITHOUT CHANGING COLOR:\n"
+    "   Step 1: Find the hotspot (area significantly brighter than surrounding same-panel paint)\n"
+    "   Step 2: Sample the TRUE paint color from the darkest unaffected corner of that same panel\n"
+    "   Step 3: Fill the hotspot area with that exact true color, blending naturally at edges\n"
+    "   Step 4: Verify — does the treated area now match the surrounding paint exactly? "
+    "Same hue? Same saturation? Same darkness? If not → fix it.\n"
+    "   NEVER sample from another bright or lit zone. Only sample from dark, shadow, or "
+    "bottom-edge areas of the panel where the true paint color is undistorted by light.\n\n"
+
+    "   WHAT IS A STUDIO REFLECTION (identify these and remove them):\n"
+    "   A reflection is a zone that is LOCALLY BRIGHTER than the true paint color.\n"
+    "   It looks like a bright band, blob, or wash of light sitting ON TOP of the paint.\n"
+    "   For every car color, reflections look like this on that color:\n"
+    "     - BLACK car: grey, silver, or white patches/streaks on black panels\n"
+    "     - DARK BLUE/NAVY car: light blue, grey-blue, or white-blue patches on dark blue panels\n"
+    "     - DARK GREEN car: light green or grey-green patches on dark green panels\n"
+    "     - WHITE car: extra-bright harsh white blobs brighter than the smooth surrounding white\n"
+    "     - GREY car: near-white or washed-out zones on mid-grey panels\n"
+    "     - ANY COLOR: wherever paint looks faded, washed-out, or lighter than it should be\n\n"
+    "   CRITICAL — METALLIC AND SILVER PAINT (READ CAREFULLY):\n"
+    "   Silver, metallic silver, and metallic paint of any color naturally have VARYING "
+    "BRIGHTNESS across the same panel. This variation is caused by metallic flakes catching "
+    "light at different angles — it is the natural appearance of metallic paint, NOT a "
+    "studio reflection. DO NOT touch this natural metallic variation.\n"
+    "   For a SILVER/METALLIC car:\n"
+    "     - The same door panel will look lighter in some zones and darker in others — KEEP THIS\n"
+    "     - The hood may have areas that look slightly lighter or more silver — KEEP THIS\n"
+    "     - DO NOT flatten or homogenize the metallic panels to a uniform grey\n"
+    "     - DO NOT make any silver panel look like a solid flat grey — it must retain metallic depth\n"
+    "   Only remove EXTREME overexposed white/near-white blobs that are clearly too bright to be "
+    "any metallic paint — zones that look blown-out and washed-out rather than metallic.\n"
+    "   After removing a reflection from metallic paint: the area must still look metallic — "
+    "it must still have the same silvery sheen and depth as the rest of that panel, not flat grey.\n\n"
+
+    "   SCAN EVERY PANEL — REMOVE HOTSPOTS, RESTORE TRUE COLOR:\n"
+    "   → ROOF: find true roof color at panel edges → remove all brighter zones → fill with true color\n"
+    "   → HOOD: find true hood color at base → remove all brighter zones → fill with true color\n"
+    "   → FRONT FENDER: remove bright patches → restore true paint color\n"
+    "   → FRONT DOOR: remove every bright streak/blob → restore true paint color\n"
+    "   → REAR DOOR(S): same treatment\n"
+    "   → REAR QUARTER PANEL: remove bright zones especially upper curve\n"
+    "   → TAILGATE/BED COVER/REAR PANEL: remove all bright zones\n"
+    "   → ALL PILLARS (A, B, C, D): remove hotspots\n"
+    "   → FRONT AND REAR BUMPERS: remove hotspots\n\n"
+
+    "   GLASS SURFACES — STEP-BY-STEP REFLECTION REMOVAL (EVERY WINDOW MUST BE TREATED):\n"
+    "   Glass is the most reflective surface on a car. Studio lights create broad white/grey washes "
+    "across glass that make windows look opaque and blown-out. Every window must be fixed.\n\n"
+    "   WHAT A GLASS REFLECTION LOOKS LIKE:\n"
+    "     - A bright white, light grey, or washed-out zone on a window pane\n"
+    "     - True clean glass (no reflection): deep dark grey/charcoal — you are looking at the dark "
+    "car interior through the glass, and it should look like a dark mirror, NOT a frosted pane\n"
+    "     - Any part of a window lighter than dark charcoal grey = studio light reflection = remove it\n\n"
+    "   HOW TO REMOVE GLASS REFLECTION (USE THIS METHOD FOR EVERY WINDOW):\n"
+    "   Step G1: Find the DARKEST unaffected corner of that window pane — the spot where no studio "
+    "light hit directly. That corner = the TRUE glass tone.\n"
+    "   Step G2: The true glass tone will be dark grey, near-black, or deep charcoal.\n"
+    "   Step G3: Fill EVERY area of that same window that is lighter than this dark reference "
+    "with the same dark tone, blending naturally at edges. The entire glass pane must match "
+    "the tone of its own darkest corner.\n"
+    "   Step G4: Verify — the window frame/rubber seal border is still visible, and the glass "
+    "pane itself is uniformly dark with NO bright blobs, NO white patches, NO light grey wash.\n"
+    "   NEVER leave any window lighter than dark grey — anything lighter = reflection still present.\n\n"
+    "   TREAT EACH WINDOW INDIVIDUALLY:\n"
+    "   → WINDSHIELD: sample darkest corner → fill every bright/white zone → uniform dark grey result.\n"
+    "     Keep the windshield wiper shape (car part — do NOT remove). "
+    "Keep the rear-view mirror base at top (car part — do NOT remove).\n"
+    "   → FRONT DOOR WINDOWS (driver + passenger): apply Step G1–G4. Both windows must match each "
+    "other in darkness. Any diagonal or vertical bright streak is a studio light band — remove it.\n"
+    "   → REAR DOOR WINDOWS: same treatment. Must match front door windows in darkness.\n"
+    "   → REAR QUARTER GLASS (small triangular/trapezoidal pane behind rear door, beside C-pillar):\n"
+    "     *** THIS IS A HIGH-RISK PROBLEM AREA — DO NOT SKIP IT ***\n"
+    "     This small pane persistently retains grey/white studio glow if not explicitly treated.\n"
+    "     Step G1: find its darkest corner. Step G3: fill everything lighter with that dark tone.\n"
+    "     After fixing: rear quarter glass must be the SAME DARKNESS as the door window beside it.\n"
+    "     If it still looks 'slightly grey' — that IS a remaining reflection. Fix it.\n"
+    "   → REAR WINDOW (entire back windshield — large rear glass panel):\n"
+    "     *** THIS IS THE OTHER HIGH-RISK PROBLEM AREA — DO NOT SKIP IT ***\n"
+    "     The rear window is the largest glass surface and collects the broadest studio reflection — "
+    "a wide light-grey wash that covers most of the pane, not just a small blob.\n"
+    "     Step G1: find the absolute darkest zone in the rear window (usually a low corner or edge).\n"
+    "     Step G3: fill the ENTIRE rear window — top, centre, AND bottom — to that dark tone.\n"
+    "     Pay special attention to:\n"
+    "       * The TOP of the rear window where it meets the roofline — usually bright white here\n"
+    "       * The CENTRE of the rear window — usually has broad grey wash from overhead studio light\n"
+    "     If the rear window has a defroster grid (thin horizontal lines across the glass): "
+    "KEEP those lines — they are car components. But the glass BETWEEN those lines must be DARK.\n"
+    "     After fixing: the entire rear window must look like a dark mirror — uniformly dark, "
+    "no grey wash anywhere, no bright zones anywhere. Same darkness as door windows.\n\n"
+    "   GLASS FINAL CHECK (ALL MUST PASS):\n"
+    "   [ ] Windshield: uniformly dark, no bright patches\n"
+    "   [ ] Front door windows: dark, matching each other\n"
+    "   [ ] Rear door windows: dark, same tone as front\n"
+    "   [ ] Rear quarter glass: DARK — as dark as the door window beside it (if grey/bright → FIX)\n"
+    "   [ ] Rear window: DARK throughout — no grey wash, no bright top zone (if not dark → FIX)\n"
+    "   Any remaining light/grey glass = unremedved studio reflection = edit is incomplete.\n\n"
+
+    "   SIDE MIRROR:\n"
+    "   Mirror HOUSING (outer plastic/painted shell) = car body color = keep exactly unchanged.\n"
+    "   Mirror FACE (reflective glass disc) = blown-out white from studio light = IS a reflection. "
+    "Replace with natural dark grey/silver as if reflecting a neutral environment.\n\n"
+
+    "   SECTION 4 FINAL CHECK — DO NOT RETURN UNTIL ALL PASS:\n"
+    "   [ ] Car paint color — is it the SAME color as original? Same hue, same saturation, same darkness?\n"
+    "   [ ] All body panels (roof, hood, doors, fenders, quarters, tailgate, bumpers) — free of bright "
+    "streaks, blobs, washed-out zones? Every hotspot filled with the locked true paint color?\n"
+    "   [ ] Windshield — dark, no bright patches?\n"
+    "   [ ] Front door windows — dark, matching each other?\n"
+    "   [ ] Rear door windows — dark?\n"
+    "   [ ] REAR QUARTER GLASS — dark grey, same as door window beside it? (This is the most commonly "
+    "missed glass surface — check it specifically)\n"
+    "   [ ] REAR WINDOW — dark throughout, no grey wash at top or centre? (This is the most commonly "
+    "missed large glass surface — check it specifically)\n"
+    "   [ ] Mirror face — dark grey, not white?\n"
+    "   If any check fails → fix that specific item before returning. Do not return with a single "
+    "remaining reflection or bright glass surface — each is visible and constitutes a failed edit.\n\n"
+
+    "   DESIGN FEATURES — NEVER TOUCH:\n"
+    "   → Chrome trim strips on window frames, roof rails, door sills — keep exactly\n"
+    "   → Chrome door handle levers — keep exactly\n"
+    "   → Chrome/silver grille bars — keep exactly\n"
+    "   → Razor-thin specular line exactly on a sharp pressed body crease — keep\n"
+    "   → Mirror HOUSING color — keep exactly\n\n"
+
+    "5. CAR COLOR — ABSOLUTE PRESERVATION (THIS OVERRIDES EVERYTHING ELSE):\n"
+    "   The car's paint color in the OUTPUT must be identical to the INPUT — same hue, same "
+    "saturation, same darkness, same finish character. This is non-negotiable and overrides "
+    "any other instruction. Specifically:\n"
+    "   - A dark navy blue car must remain dark navy blue — NOT lighter blue, NOT grey-blue\n"
+    "   - A black car must remain black — NOT dark grey, NOT charcoal\n"
+    "   - A dark green car must remain dark green — NOT lighter green\n"
+    "   - A red car must remain the same red — NOT orange-red, NOT darker red\n"
+    "   - A white car must remain the same white — NOT brighter, NOT cream\n"
+    "   - A silver car must remain the same silver grey — NOT lighter, NOT darker\n"
+    "   If you compare the output car paint to the input car paint and they look different "
+    "in color — the edit has FAILED on color preservation. The reflection removal in Section 4 "
+    "must be done in a way that preserves color exactly. If removing a reflection is causing "
+    "color change, you are sampling the wrong reference color — resample from the darkest "
+    "unaffected area of the panel and try again.\n\n"
 
     "6. TIRES:\n"
     "   Make tires deep black and clean. Remove all dust and discoloration from rubber surface only.\n\n"
@@ -116,7 +322,15 @@ ENHANCE_PROMPT = (
     "look flat, dull or matte. The car should look shiny and vibrant exactly as it did "
     "in the original photo.\n\n"
 
-    "10. CAR PARTS, COMPONENTS AND BODY PANELS (THIS IS ABSOLUTELY CRITICAL):\n"
+    "10. LICENSE PLATE / NUMBER PLATE (ABSOLUTE RULE):\n"
+    "   The license plate or dealer plate MUST remain fully visible and completely intact in the output. "
+    "Do NOT remove, erase, blur, obscure, replace or alter the license plate in any way. "
+    "Do NOT replace it with a blank plate, a black rectangle, or empty space. "
+    "The plate must appear in exactly the same position, size, and appearance as the original. "
+    "If a dealer advertising plate (e.g. BERGENCAR.COM) is on the car, keep it exactly as-is. "
+    "Removing or altering the license plate is strictly forbidden.\n\n"
+
+    "11. CAR PARTS, COMPONENTS AND BODY PANELS (THIS IS ABSOLUTELY CRITICAL):\n"
     "   - Do NOT change the color of ANY car part or component. "
     "Headlights, tail lights, headlight surrounds, grille, grille surround, bumpers, body panels, "
     "hood, roof, doors, door handles, side mirrors, pillar trim, step bars, running boards, "
@@ -133,7 +347,101 @@ ENHANCE_PROMPT = (
     "ONLY the background (walls and floor) and unwanted light reflections on painted panels should change. "
     "Every single car component must be pixel-identical in color and shape to the original.\n\n"
 
+    "12. DO NOT BLUR, SMEAR OR SMUDGE THE CAR (ABSOLUTELY CRITICAL):\n"
+    "   When editing the background, you MUST keep your edits strictly confined to the background "
+    "pixels. Do NOT let any blurring, smearing, feathering, blending or softening from the "
+    "background edit spill onto the car or any car part. Specifically:\n"
+    "   - Do NOT blur the edges of the car body where it meets the background.\n"
+    "   - Do NOT smear or blend any car panel detail, edge, or surface texture.\n"
+    "   - Do NOT soften, feather or degrade the sharpness of any car part near the background.\n"
+    "   - Do NOT let the white background colour bleed into or onto any painted car surface.\n"
+    "   - The boundary between the car and the background must remain pixel-sharp — exactly as "
+    "sharp and well-defined as in the original photo.\n"
+    "   - Any blurring or smearing visible on the car body, fenders, doors, roof, or edges "
+    "compared to the original means the edit has FAILED. The car must look as sharp and detailed "
+    "as the original photograph — every edge crisp, every detail intact.\n\n"
+
+    "13. CAR ANTENNA — DO NOT REMOVE (ABSOLUTE RULE):\n"
+    "   The car has a radio antenna / mast antenna mounted on the roof or body. It appears as a "
+    "thin vertical or slightly angled line/rod protruding from the top of the car. "
+    "This is a car component — NOT a studio cable or wire. "
+    "You MUST keep the antenna fully intact and visible in the output, exactly as it appears in "
+    "the original. Do not remove it, erase it, shorten it, or paint over it with the background "
+    "color. Removing the antenna is strictly forbidden.\n\n"
+
     "Return only the edited image with no text or watermarks."
+)
+
+FLOOR_CLEAN_PROMPT = (
+    "Your ONLY task in this image: clean the floor. "
+    "Do NOT change the car. Do NOT change the walls or background.\n\n"
+
+    "STEP 1 — SAMPLE AND LOCK THE TRUE DRY TILE COLOR (DO THIS BEFORE ANY CLEANING):\n"
+    "Look at the floor and find tiles that are clearly DRY — matte, non-shiny, non-reflective. "
+    "These exist even on floors with many wet patches: look at the edges of the frame, tiles "
+    "far from the car, or any tile with a flat matte appearance.\n"
+    "Sample the color of 3-4 clearly-dry tiles. That is the TRUE TILE COLOR. Memorize it.\n"
+    "CRITICAL INSIGHT — wet spots are LIGHTER than dry tiles:\n"
+    "  - Wet/damp patches = BRIGHTER, more reflective, lighter in color than the dry tile\n"
+    "  - Dry tiles = MATTE, darker, non-reflective — this is the TRUE tile color\n"
+    "  - The true tile color is always the DARKER MATTE version, not the lighter shiny version\n"
+    "Your TRUE TILE COLOR is the fill target. Every cleaned spot must match it exactly.\n"
+    "Do not make cleaned spots lighter than the true tile color. "
+    "Do not make them darker than the true tile color. Exact match only.\n\n"
+
+    "STEP 2 — FIND ALL CONTAMINATION:\n"
+    "Scan every visible floor tile in these zones WITHOUT EXCEPTION:\n"
+    "  - Directly under the car body / chassis\n"
+    "  - Between the front tires\n"
+    "  - Between the rear tires\n"
+    "  - In front of the front bumper\n"
+    "  - Behind the rear bumper\n"
+    "  - Along both sides of the vehicle\n"
+    "  - Every other visible floor tile\n"
+    "Mark each contamination type:\n"
+    "  TYPE A (wet/bright): tiles LIGHTER or more reflective than the true tile color\n"
+    "  TYPE B (dark stain): tiles clearly DARKER than the true tile color\n\n"
+
+    "STEP 3 — CLEAN EACH CONTAMINATION MARK:\n"
+    "For each TYPE A (bright/wet) mark:\n"
+    "  - Fill it with the TRUE TILE COLOR from Step 1\n"
+    "  - The result must be the same darkness as the dry tiles around it — NOT lighter\n"
+    "For each TYPE B (dark stain) mark:\n"
+    "  - Fill it with the TRUE TILE COLOR from Step 1\n"
+    "  - The result must match the surrounding dry tiles\n"
+    "For every filled area:\n"
+    "  - Keep grout lines visible\n"
+    "  - Keep tile texture natural\n"
+    "  - Blend seamlessly with adjacent dry tiles\n\n"
+
+    "STEP 4 — PRESERVE THE FLOOR IDENTITY (do not change any of these):\n"
+    "  - Tile size: same as input\n"
+    "  - Tile material and surface texture: same as input\n"
+    "  - Overall floor color: same as the TRUE TILE COLOR you sampled — no lighter, no darker\n"
+    "  - Grout width and color: same as input\n\n"
+
+    "*** CRITICAL WARNING — FLOOR BRIGHTNESS / LIGHTNESS ***:\n"
+    "Dealership floors come in many shades: light grey, white-grey, medium grey, dark grey, tan. "
+    "You MUST output the same shade as THIS floor — not the shade you expect a 'clean' floor to be.\n"
+    "  - If the dry tiles in THIS image are LIGHT GREY → output floor must be LIGHT GREY\n"
+    "  - If the dry tiles in THIS image are MEDIUM GREY → output floor must be MEDIUM GREY\n"
+    "  - If the dry tiles in THIS image are DARK GREY → output floor must be DARK GREY\n"
+    "  - If the dry tiles in THIS image are WHITE/CREAM → output floor must be WHITE/CREAM\n"
+    "DO NOT default to a dark grey/charcoal floor just because you have seen dark dealership "
+    "floors in your training data. THIS floor's dry tile color is your only reference.\n"
+    "A common failure mode: light grey floor becomes dark grey after cleaning. "
+    "This is WRONG. If you sampled light grey in Step 1, every cleaned tile must be light grey.\n\n"
+
+    "STEP 5 — VERIFY:\n"
+    "  [ ] Overall floor color matches the dry tile reference from Step 1 — same lightness/darkness?\n"
+    "  [ ] Floor is NOT darker than the original dry tiles? (most common failure — check this)\n"
+    "  [ ] Floor is NOT lighter than the original dry tiles?\n"
+    "  [ ] Zero wet/bright patches visible anywhere (including under the car)?\n"
+    "  [ ] Zero dark stains visible anywhere?\n"
+    "  [ ] Car unchanged — same color, parts, position?\n"
+    "  [ ] Walls/background unchanged?\n"
+    "Return the image with a clean floor at the correct original tile color, "
+    "and everything else identical to the input."
 )
 
 BACKGROUND_REMOVAL_PROMPT = (
@@ -510,80 +818,77 @@ def _restore_floor_from_original(
     car_mask_np: np.ndarray,
 ) -> Image.Image:
     """
-    Correct Gemini's floor color recoloring while keeping Gemini's cleaned floor texture.
+    Post-process floor color correction: keep Gemini's cleaned floor, fix its color.
 
-    Root cause history:
-      - Corner sampling FAILED: studio photos have white backdrop curtains in corners.
-        Original corner = white curtain (RGB≈230), Gemini corner = white wall (RGB≈235).
-        Drift = 5 → "negligible" → no correction. But actual floor centre changed by 90 units.
-      - Pixel replacement FAILED: restores original dirt/wet spots.
-      - Affine (mean+std) FAILED: orig_std >> proc_std on wet concrete → scale blows up.
+    Gemini cleans the floor well (removes wet spots, puddles, dirt) but reliably shifts
+    the floor color/brightness. This function corrects that shift using the original as
+    the color reference, while keeping Gemini's cleaned texture.
 
-    Correct approach — background mask + centre-strip floor sampling:
-      1. Use rembg car mask to identify background (non-car) pixels.
-      2. Sample floor from the CENTRE strip of background pixels in the bottom 40% of frame.
-         Centre strip = middle 60% of width, excluding 20% margins on each side.
-         This avoids backdrop curtains (which hang at edges) and reliably hits actual floor.
-      3. If the centre-strip sample is bright (avg L > 200) AND the original image corners
-         are dark (avg L < 150), the centre strip caught backdrop — fall back to full
-         background-mask floor pixels (better than nothing).
-      4. Apply per-channel mean-shift to all background floor pixels.
-         Gemini recolors floor uniformly so global mean-shift is exact.
+    Sampling strategy:
+      - Background mask (not car) + bottom 45% of frame = floor zone
+      - Centre 60% of width only (excludes backdrop curtains at left/right edges)
+      - Median per channel (not mean) — median ignores puddle outliers and gives the
+        true base floor color even on heavily wet concrete
+      - Apply per-channel mean-shift: Gemini's floor pixels shifted by (orig_median - proc_median)
+      - Only floor pixels are corrected — car and wall pixels untouched
     """
     if original.size != processed.size:
         original = original.resize(processed.size, Image.Resampling.LANCZOS)
 
     h, w = car_mask_np.shape
-    orig_np  = np.array(original).astype(np.float32)
-    proc_np  = np.array(processed).astype(np.float32)
+    orig_np = np.array(original).astype(np.float32)
+    proc_np = np.array(processed).astype(np.float32)
 
     background_mask = ~car_mask_np
 
-    # --- Define floor zone: background pixels in bottom 40% of frame ---
-    floor_row_start = int(h * 0.60)
+    # Floor zone: background pixels in bottom 45% of frame
+    floor_row_start = int(h * 0.55)
     floor_row_mask  = np.zeros((h, w), dtype=bool)
     floor_row_mask[floor_row_start:, :] = True
     full_floor_mask = background_mask & floor_row_mask
 
-    # --- Centre strip: exclude 20% margins on each side (backdrop zone) ---
+    # Sampling zone: centre 60% width to exclude backdrop curtains at edges
     margin = int(w * 0.20)
     centre_col_mask = np.zeros((h, w), dtype=bool)
     centre_col_mask[:, margin: w - margin] = True
-    centre_floor_mask = full_floor_mask & centre_col_mask
-
-    # Choose sampling region: prefer centre strip, fall back to full floor mask
-    if centre_floor_mask.sum() >= 200:
-        sample_mask = centre_floor_mask
-        sample_label = "centre-strip"
-    elif full_floor_mask.sum() >= 200:
-        sample_mask = full_floor_mask
-        sample_label = "full-floor-bg"
-    else:
-        logger.info("Floor color: too few background floor pixels, skipping")
+    sample_mask = full_floor_mask & centre_col_mask
+    if sample_mask.sum() < 200:
+        sample_mask = full_floor_mask  # fallback: use full floor zone
+    if sample_mask.sum() < 50:
+        logger.info("Floor correction: too few floor pixels, skipping")
         return processed
 
-    orig_sample = orig_np[sample_mask]   # (N, 3)
+    orig_sample = orig_np[sample_mask]
     proc_sample = proc_np[sample_mask]
 
-    orig_floor_mean = orig_sample.mean(axis=0)
-    proc_floor_mean = proc_sample.mean(axis=0)
-    drift           = orig_floor_mean - proc_floor_mean
-    max_drift       = np.abs(drift).max()
+    # Median per channel — robust to wet spot outliers
+    orig_median = np.array([
+        float(np.median(orig_sample[:, 0])),
+        float(np.median(orig_sample[:, 1])),
+        float(np.median(orig_sample[:, 2])),
+    ])
+    proc_median = np.array([
+        float(np.median(proc_sample[:, 0])),
+        float(np.median(proc_sample[:, 1])),
+        float(np.median(proc_sample[:, 2])),
+    ])
+
+    drift     = orig_median - proc_median
+    max_drift = float(np.abs(drift).max())
 
     logger.info(
-        "Floor color [%s]: orig RGB(%.0f,%.0f,%.0f) → gemini RGB(%.0f,%.0f,%.0f) "
+        "Floor correction: orig median RGB(%.0f,%.0f,%.0f) → gemini RGB(%.0f,%.0f,%.0f) "
         "drift R%+.1f G%+.1f B%+.1f",
-        sample_label,
-        orig_floor_mean[0], orig_floor_mean[1], orig_floor_mean[2],
-        proc_floor_mean[0], proc_floor_mean[1], proc_floor_mean[2],
+        orig_median[0], orig_median[1], orig_median[2],
+        proc_median[0], proc_median[1], proc_median[2],
         drift[0], drift[1], drift[2],
     )
 
-    if max_drift <= 5:
-        logger.info("Floor color: drift %.1f — negligible, no correction", max_drift)
+    if max_drift <= 1:
+        logger.info("Floor correction: drift %.1f — negligible, floor color preserved", max_drift)
         return processed
 
-    # Apply mean-shift to ALL background floor pixels (not just sample zone)
+    # Apply mean-shift to all floor pixels (keeps Gemini's cleaned texture, fixes color)
     result_np = proc_np.copy()
     result_np[full_floor_mask] = np.clip(proc_np[full_floor_mask] + drift, 0, 255)
 
@@ -682,6 +987,169 @@ def _scale_mask(mask_np: np.ndarray, target_w: int, target_h: int) -> np.ndarray
     return np.array(mask_img.resize((target_w, target_h), Image.Resampling.LANCZOS)) > 128
 
 
+def _force_wall_background_white(
+    processed: Image.Image,
+    car_mask_np: np.ndarray,
+) -> Image.Image:
+    """
+    Force all wall/ceiling background pixels to pure white (#FFFFFF).
+
+    This is a deterministic code fix that Gemini's prompt instructions cannot reliably
+    achieve because Gemini treats the cyclorama shadow and grey gradient as physically
+    correct studio lighting and preserves them even when told not to.
+
+    What this removes:
+      - The cyclorama curved arc / dome shadow at the top of the background
+      - Grey gradient / hollow shadow that Gemini renders on the infinity cove wall
+      - Any off-white, grey, or tonal variation Gemini left in the wall/ceiling area
+
+    Scope: ONLY non-car pixels in the upper portion of the frame (wall/ceiling zone).
+    The floor and all car pixels are never touched by this function.
+
+    The wall zone is defined as the top 58% of the frame height. The floor zone
+    starts around 55-60% so there is a small safe overlap — floor correction
+    (`_restore_floor_from_original`) runs after this and restores the floor correctly.
+    """
+    proc_np = np.array(processed)
+    ph, pw = proc_np.shape[:2]
+
+    if car_mask_np.shape != (ph, pw):
+        car_mask = _scale_mask(car_mask_np, pw, ph)
+    else:
+        car_mask = car_mask_np
+
+    # Wall/ceiling zone: top 58% of frame rows
+    wall_row_end = int(ph * 0.58)
+    wall_row_mask = np.zeros((ph, pw), dtype=bool)
+    wall_row_mask[:wall_row_end, :] = True
+
+    # Apply only to background (non-car) pixels in wall zone
+    wall_bg_mask = (~car_mask) & wall_row_mask
+
+    result_np = proc_np.copy()
+    result_np[wall_bg_mask] = [255, 255, 255]
+
+    logger.info(
+        "Wall background: forced %d pixels to pure white (wall/ceiling zone, top 58%%)",
+        int(wall_bg_mask.sum()),
+    )
+    return Image.fromarray(result_np)
+
+
+def _sharpen_car_detail(
+    processed: Image.Image,
+    car_mask_np: np.ndarray,
+) -> Image.Image:
+    """
+    Restore sharpness to the car body that Gemini softens during background editing.
+
+    Gemini blurs and feathers car edges and panel surfaces when processing the background.
+    This applies an unsharp mask strictly to the car pixels only — background pixels
+    are never touched. The unsharp mask reconstructs high-frequency edge detail.
+
+    Parameters chosen conservatively (sigma=1.0, strength=1.4) to sharpen edges
+    without amplifying noise or creating halos on smooth paint surfaces.
+    """
+    proc_np = np.array(processed)
+    ph, pw = proc_np.shape[:2]
+
+    if car_mask_np.shape != (ph, pw):
+        car_mask = _scale_mask(car_mask_np, pw, ph)
+    else:
+        car_mask = car_mask_np
+
+    if not car_mask.any():
+        return processed
+
+    proc_bgr = cv2.cvtColor(proc_np, cv2.COLOR_RGB2BGR)
+
+    # Unsharp mask: sharpened = original + (original - blurred) * amount
+    blurred   = cv2.GaussianBlur(proc_bgr, (0, 0), sigmaX=1.0)
+    sharpened = cv2.addWeighted(proc_bgr, 1.4, blurred, -0.4, 0)
+    sharpened_rgb = cv2.cvtColor(sharpened, cv2.COLOR_BGR2RGB)
+
+    # Apply only to car area — background stays untouched
+    result_np = proc_np.copy()
+    result_np[car_mask] = sharpened_rgb[car_mask]
+
+    logger.info("Car sharpening: applied unsharp mask to %d car pixels", int(car_mask.sum()))
+    return Image.fromarray(result_np)
+
+
+def _clean_floor_spots_inpaint(
+    processed: Image.Image,
+    car_mask_np: np.ndarray,
+    darkness_threshold: int = 18,
+) -> Image.Image:
+    """
+    Remove dark dirty spots and stains from the floor that Gemini left behind.
+
+    Strategy:
+      1. Identify floor zone: background (not car) pixels in the bottom 55% of the frame.
+      2. Estimate the 'clean baseline' of the floor using a large median blur kernel.
+         The kernel is big enough to span across individual spots/marks so the median
+         represents the clean tile base colour, not the spot.
+      3. Any floor pixel significantly DARKER than its local baseline is a spot/stain.
+      4. Inpaint those flagged pixels with surrounding clean floor texture (TELEA method).
+
+    darkness_threshold: how many intensity units darker than local median counts as a spot.
+      Lower → more aggressive (catches faint marks). Default 18 is a good balance.
+    """
+    proc_np = np.array(processed)
+    ph, pw = proc_np.shape[:2]
+
+    # Resize car mask to match the processed image
+    mh, mw = car_mask_np.shape
+    if (mh, mw) != (ph, pw):
+        car_mask = _scale_mask(car_mask_np, pw, ph)
+    else:
+        car_mask = car_mask_np
+
+    # Floor zone: non-car pixels in the bottom 55% of the frame
+    background_mask = ~car_mask
+    floor_row_start = int(ph * 0.45)
+    floor_row_mask  = np.zeros((ph, pw), dtype=bool)
+    floor_row_mask[floor_row_start:, :] = True
+    floor_zone = background_mask & floor_row_mask
+
+    if not floor_zone.any():
+        logger.info("Floor spot removal: no floor zone found, skipping")
+        return processed
+
+    # Convert to grayscale for spot detection
+    gray = cv2.cvtColor(proc_np, cv2.COLOR_RGB2GRAY).astype(np.float32)
+
+    # Large median blur kernel — spans across individual spots/stains to get clean baseline.
+    # Must be odd. 81px at 1024px resolution is about 8% of frame width.
+    blur_k = 81
+    local_baseline = cv2.medianBlur(gray.astype(np.uint8), blur_k).astype(np.float32)
+
+    # Spots = floor pixels that are significantly DARKER than the local clean baseline
+    darkness = local_baseline - gray   # positive where pixel is darker than surroundings
+    spot_mask = floor_zone & (darkness > darkness_threshold)
+
+    spot_count = int(spot_mask.sum())
+    floor_count = int(floor_zone.sum())
+    if spot_count == 0:
+        logger.info("Floor spot removal: no spots found (threshold=%d)", darkness_threshold)
+        return processed
+
+    logger.info(
+        "Floor spot removal: %d spot pixels (%.1f%% of floor) — inpainting (threshold=%d)",
+        spot_count, 100.0 * spot_count / max(floor_count, 1), darkness_threshold,
+    )
+
+    # Dilate the spot mask slightly to catch spot edges cleanly
+    dilate_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    spot_mask_u8 = cv2.dilate(spot_mask.astype(np.uint8) * 255, dilate_k, iterations=1)
+
+    # TELEA inpainting: fast, excellent at reconstructing smooth/textured surfaces
+    proc_bgr      = cv2.cvtColor(proc_np, cv2.COLOR_RGB2BGR)
+    inpainted_bgr = cv2.inpaint(proc_bgr, spot_mask_u8, inpaintRadius=12, flags=cv2.INPAINT_TELEA)
+    inpainted_rgb = cv2.cvtColor(inpainted_bgr, cv2.COLOR_BGR2RGB)
+
+    logger.info("Floor spot removal: complete")
+    return Image.fromarray(inpainted_rgb)
 
 
 # ---------------------------------------------------------------------------
@@ -711,101 +1179,54 @@ def process_car_image(
     orig_w, orig_h = pil_img.size
 
     # Resize to 1024px for Gemini API
-    pil_img = _resize_for_api(pil_img)
+    pil_img_small = _resize_for_api(pil_img)
 
-    if mode == "enhance-preserve":
-        prompt = ENHANCE_PROMPT
-    elif background == "transparent":
-        prompt = BACKGROUND_REMOVAL_TRANSPARENT_PROMPT
-    else:
-        prompt = BACKGROUND_REMOVAL_PROMPT
-
-    w, h = pil_img.size
+    w, h = pil_img_small.size
     aspect = _aspect_ratio_str(w, h)
-    img_bytes = _pil_to_jpeg_bytes(pil_img)
+    img_bytes = _pil_to_jpeg_bytes(pil_img_small)
     client = _get_client()
 
-    # Sample original car color and HSV data using rembg mask
-    mask_np = _get_car_mask_rembg(pil_img)
-    original_car_color = _get_average_color(pil_img, mask_np)
-    r, g, b = int(original_car_color[0]), int(original_car_color[1]), int(original_car_color[2])
-
-    # Sample HSV saturation and brightness from car area
-    orig_np = np.array(pil_img)
-    orig_hsv = cv2.cvtColor(orig_np, cv2.COLOR_RGB2HSV).astype(np.float32)
-    if mask_np.any():
-        s_val = int(orig_hsv[mask_np, 1].mean())
-        v_val = int(orig_hsv[mask_np, 2].mean())
-    else:
-        s_val, v_val = 128, 200
-
-    # Sample original floor color — inject into prompt so Gemini knows the exact floor color
-    fr, fg, fb = _sample_floor_color(pil_img, mask_np)
-
-    color_instruction = (
-        f"\n\nCAR COLOR IS CRITICAL: The car color is RGB ({r}, {g}, {b}). "
-        f"Saturation level is {s_val}. Brightness level is {v_val}. "
-        "These are the EXACT values you must maintain. The output car must have these exact same values. "
-        "Do not change these under any circumstances."
-        f"\n\nFLOOR COLOR MEASUREMENT (DO NOT IGNORE): "
-        f"I have measured the original floor color from this exact image. "
-        f"The floor is RGB ({fr}, {fg}, {fb}). "
-        f"Brightness level: {int((fr + fg + fb) / 3)}. "
-        f"Your output floor MUST match this EXACTLY. "
-        f"If your output floor brightness differs by more than 10 units from {int((fr + fg + fb) / 3)}, "
-        f"you have failed this instruction. "
-        f"The floor color MUST remain RGB ({fr}, {fg}, {fb}) — same exact shade, same tone. "
-        f"Do NOT produce a brighter floor. Do NOT produce a darker floor. "
-        f"Only remove puddles or wet spots while keeping the exact same floor color."
-    )
-
     if mode == "enhance-preserve":
-        prompt_with_color = prompt + "\n\n11. " + color_instruction.lstrip()
+        # -----------------------------------------------------------------------
+        # Two-stage Gemini pipeline
+        # Stage 1: Floor cleaning ONLY — focused prompt with no competing rules.
+        #          One job = clean floor. Car/background unchanged.
+        # Stage 2: Full edit — background white, reflections removed, car preserved.
+        #          Starts with an already-clean floor so preservation rules never
+        #          conflict with cleaning — the floor is already clean.
+        # -----------------------------------------------------------------------
+        logger.info("Stage 1/2 — floor cleaning for %s", filename)
+        floor_response = _call_gemini_with_retry(
+            client, FLOOR_CLEAN_PROMPT, img_bytes, aspect, f"{filename}[floor]"
+        )
+        floor_clean_pil = _extract_image_from_response(floor_response)
+        logger.info("Stage 1 output: %s — passing to Stage 2", floor_clean_pil.size)
+
+        # Ensure Stage 1 output matches the input size for Stage 2
+        if floor_clean_pil.size != pil_img_small.size:
+            floor_clean_pil = floor_clean_pil.resize(pil_img_small.size, Image.Resampling.LANCZOS)
+
+        logger.info("Stage 2/2 — full edit for %s", filename)
+        stage2_bytes = _pil_to_jpeg_bytes(floor_clean_pil)
+        response = _call_gemini_with_retry(
+            client, ENHANCE_PROMPT, stage2_bytes, aspect, f"{filename}[edit]"
+        )
+        result_pil = _extract_image_from_response(response)
+        logger.info("Stage 2 output received at %s — upscaling to %dx%d", result_pil.size, orig_w, orig_h)
+
     else:
-        prompt_with_color = prompt + color_instruction
+        if background == "transparent":
+            prompt = BACKGROUND_REMOVAL_TRANSPARENT_PROMPT
+        else:
+            prompt = BACKGROUND_REMOVAL_PROMPT
 
-    response = _call_gemini_with_retry(client, prompt_with_color, img_bytes, aspect, filename)
-    result_pil = _extract_image_from_response(response)
+        response = _call_gemini_with_retry(client, prompt, img_bytes, aspect, filename)
+        result_pil = _extract_image_from_response(response)
+        logger.info("Gemini output received at %s — upscaling to %dx%d", result_pil.size, orig_w, orig_h)
 
-    # Resize result to match input dimensions
-    if result_pil.size != pil_img.size:
-        result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
-
-    # Post-processing: color accuracy check (retry if color drifted badly)
-    result_pil = _check_color_accuracy(
-        pil_img, result_pil, client, prompt_with_color, img_bytes, aspect, filename,
-        mask_np=mask_np,
-    )
-    if result_pil.size != pil_img.size:
-        result_pil = result_pil.resize(pil_img.size, Image.Resampling.LANCZOS)
-
-    # Flip detection — Gemini occasionally mirrors the car; correct if detected.
-    if _is_flipped(pil_img, result_pil):
-        result_pil = ImageOps.mirror(result_pil)
-
-    # Calculate LAB colour shifts at 1024px resolution.
-    # These scalar offsets are resolution-independent and will be applied at full res.
-    lab_shifts = _calculate_lab_shifts(pil_img, result_pil, mask_np)
-
-    # Upscale Gemini's output directly to full resolution.
-    # Gemini handles reflection removal, background cleaning, and floor correction natively.
-    # We do not mix original pixels — that caused seam artifacts (patches) at reflection
-    # boundaries where original and Gemini pixels met with different values.
+    # Upscale Gemini output back to original full resolution (no pixel mixing or modifications)
     if result_pil.size != (orig_w, orig_h):
         result_pil = result_pil.resize((orig_w, orig_h), Image.Resampling.LANCZOS)
-    result_pil = _apply_lab_shifts(result_pil, _scale_mask(mask_np, orig_w, orig_h), lab_shifts)
-    logger.info("Using Gemini output directly (upscaled to %dx%d) — no pixel mixing", orig_w, orig_h)
-
-    # Floor color normalization — correct Gemini's floor recoloring to match original.
-    # Reload original at full res for sampling (pil_img is downscaled to 1024px).
-    orig_for_floor = load_image(image_data, filename)
-    if orig_for_floor.mode != "RGB":
-        orig_for_floor = orig_for_floor.convert("RGB")
-    if orig_for_floor.size != result_pil.size:
-        orig_for_floor = orig_for_floor.resize(result_pil.size, Image.Resampling.LANCZOS)
-    floor_mask_fullres = _scale_mask(mask_np, result_pil.width, result_pil.height)
-    result_pil = _restore_floor_from_original(orig_for_floor, result_pil, floor_mask_fullres)
-    del orig_for_floor
 
     # Apply brightness boost if requested
     result_pil = _apply_brightness(result_pil, lighting_boost)
