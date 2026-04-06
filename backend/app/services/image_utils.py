@@ -3,6 +3,7 @@
 import io
 import logging
 from pathlib import Path
+from typing import Optional
 
 from PIL import Image
 
@@ -24,7 +25,7 @@ def load_image(data: bytes, filename: str) -> Image.Image:
     return Image.open(io.BytesIO(data)).convert("RGB")
 
 
-def _extract_embedded_jpeg(data: bytes) -> bytes | None:
+def _extract_embedded_jpeg(data: bytes) -> Optional[bytes]:
     """Extract the largest embedded JPEG preview from a RAW file.
 
     RAW files (NEF, ARW, CR2, etc.) contain embedded JPEG previews.

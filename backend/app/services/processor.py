@@ -7,7 +7,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from PIL import Image
 
@@ -31,7 +31,7 @@ class ProcessingLog:
         self.failed: list[dict[str, Any]] = []
         self.results: list[dict[str, Any]] = []
         self.started_at = datetime.utcnow().isoformat()
-        self.finished_at: str | None = None
+        self.finished_at: Optional[str] = None
         self.status: str = "pending"  # pending | processing | completed | failed
 
     def to_dict(self) -> dict:
@@ -51,7 +51,7 @@ class ProcessingLog:
 _jobs: dict[str, ProcessingLog] = {}
 
 
-def _save_raw_preview(image_data: bytes, filename: str, job_id: str) -> str | None:
+def _save_raw_preview(image_data: bytes, filename: str, job_id: str) -> Optional[str]:
     """For RAW files (NEF etc), save a browser-viewable PNG preview of the original. Returns preview filename or None."""
     ext = Path(filename).suffix.lower()
     if ext not in RAW_EXTENSIONS:
@@ -225,7 +225,7 @@ def _run_batch(job_id: str, images: list[tuple[bytes, str]], opts: dict) -> None
     _cleanup_old_files()
 
 
-def start_batch(images: list[tuple[bytes, str]], opts: dict | None = None) -> str:
+def start_batch(images: list[tuple[bytes, str]], opts: Optional[dict] = None) -> str:
     """
     Start batch processing in background. Returns job_id immediately.
     Frontend polls /api/status/{job_id} for progress.
@@ -237,7 +237,7 @@ def start_batch(images: list[tuple[bytes, str]], opts: dict | None = None) -> st
     return job_id
 
 
-def process_sync(images: list[tuple[bytes, str]], opts: dict | None = None) -> dict[str, Any]:
+def process_sync(images: list[tuple[bytes, str]], opts: Optional[dict] = None) -> dict[str, Any]:
     """
     Process images synchronously (single or small batch).
     Use for 1-3 images when instant response is preferred.
@@ -265,7 +265,7 @@ def process_sync(images: list[tuple[bytes, str]], opts: dict | None = None) -> d
     }
 
 
-def get_job_status(job_id: str) -> dict | None:
+def get_job_status(job_id: str) -> Optional[dict]:
     """Get processing status for a job."""
     log = _jobs.get(job_id)
     if not log:
@@ -278,7 +278,7 @@ def get_job_status(job_id: str) -> dict | None:
     return log.to_dict()
 
 
-def get_processed_file_path(job_id: str, filename: str) -> Path | None:
+def get_processed_file_path(job_id: str, filename: str) -> Optional[Path]:
     """Resolve path to a processed file for download."""
     path = OUTPUT_DIR / job_id / filename
     return path if path.exists() else None
