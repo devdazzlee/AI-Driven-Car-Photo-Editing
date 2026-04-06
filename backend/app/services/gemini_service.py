@@ -170,29 +170,59 @@ ENHANCE_PROMPT = (
     "bottom-edge areas of the panel where the true paint color is undistorted by light.\n\n"
 
     "   WHAT IS A STUDIO REFLECTION (identify these and remove them):\n"
-    "   A reflection is a zone that is LOCALLY BRIGHTER than the true paint color.\n"
-    "   It looks like a bright band, blob, or wash of light sitting ON TOP of the paint.\n"
+    "   A reflection is any zone that is BRIGHTER than the true paint color sampled from the "
+    "darkest unaffected area of the same panel. It can appear as a small blob, a large sweep, "
+    "a diagonal streak, or a broad diffuse wash that covers most of a panel.\n"
+    "   UNIVERSAL NEAR-WHITE RULE (apply to ALL non-white cars without exception):\n"
+    "   → If the car is NOT white and any area of any painted panel reads as near-white "
+    "(looks almost white, bright white, or washed-out white) — that IS a studio reflection. "
+    "REMOVE IT. There are NO exceptions. Non-white car paint NEVER becomes near-white "
+    "from its own color — any near-white area is 100% caused by studio light.\n"
     "   For every car color, reflections look like this on that color:\n"
     "     - BLACK car: grey, silver, or white patches/streaks on black panels\n"
     "     - DARK BLUE/NAVY car: light blue, grey-blue, or white-blue patches on dark blue panels\n"
     "     - DARK GREEN car: light green or grey-green patches on dark green panels\n"
     "     - WHITE car: extra-bright harsh white blobs brighter than the smooth surrounding white\n"
-    "     - GREY car: near-white or washed-out zones on mid-grey panels\n"
+    "     - GREY/SILVER car: near-white, white, or washed-out zones — any area that looks white "
+    "instead of grey IS a reflection; broad diffuse white washes covering large panel areas "
+    "are ALSO reflections and must also be removed\n"
     "     - ANY COLOR: wherever paint looks faded, washed-out, or lighter than it should be\n\n"
-    "   CRITICAL — METALLIC AND SILVER PAINT (READ CAREFULLY):\n"
-    "   Silver, metallic silver, and metallic paint of any color naturally have VARYING "
-    "BRIGHTNESS across the same panel. This variation is caused by metallic flakes catching "
-    "light at different angles — it is the natural appearance of metallic paint, NOT a "
-    "studio reflection. DO NOT touch this natural metallic variation.\n"
-    "   For a SILVER/METALLIC car:\n"
-    "     - The same door panel will look lighter in some zones and darker in others — KEEP THIS\n"
-    "     - The hood may have areas that look slightly lighter or more silver — KEEP THIS\n"
-    "     - DO NOT flatten or homogenize the metallic panels to a uniform grey\n"
-    "     - DO NOT make any silver panel look like a solid flat grey — it must retain metallic depth\n"
-    "   Only remove EXTREME overexposed white/near-white blobs that are clearly too bright to be "
-    "any metallic paint — zones that look blown-out and washed-out rather than metallic.\n"
-    "   After removing a reflection from metallic paint: the area must still look metallic — "
-    "it must still have the same silvery sheen and depth as the rest of that panel, not flat grey.\n\n"
+    "   CRITICAL — METALLIC AND SILVER PAINT — BRIGHTNESS THRESHOLD RULE:\n"
+    "   Metallic paint has natural brightness variation caused by flakes — but this variation "
+    "is SMALL and GRADUAL. Studio light hotspots are LARGE, HARSH, and create zones that are "
+    "MUCH brighter than the rest of the panel. You MUST distinguish between the two using this "
+    "mandatory rule:\n\n"
+    "   THE BRIGHTNESS THRESHOLD (APPLY THIS RULE MECHANICALLY):\n"
+    "   Step M1: Sample the TRUE paint color from the darkest unaffected edge/bottom of the panel.\n"
+    "   Step M2: Compare any bright zone to that reference.\n"
+    "     → If the bright zone is more than 40% brighter than the reference: IT IS A REFLECTION — REMOVE IT.\n"
+    "     → If any zone reads as near-white (RGB values all above 210, or the area looks almost "
+    "white rather than silver/grey): IT IS A REFLECTION — REMOVE IT. Real metallic paint, even "
+    "in direct studio light, NEVER becomes pure white. Near-white on a grey or silver car = "
+    "studio hotspot, 100% of the time.\n"
+    "     → If the variation is subtle and gradual (a slightly lighter shimmer, 10-25% difference): "
+    "that is natural metallic variation — leave it.\n\n"
+    "   DIFFUSE PANEL-WIDE WHITEWASH (MOST COMMON FAILURE MODE FOR SILVER CARS):\n"
+    "   Studio lights on silver/grey cars often create a BROAD, DIFFUSE WHITE WASH that covers "
+    "50-80% of a panel — not a small localized blob. This is still a reflection, even though it "
+    "is large and gradual. Treat it the same way:\n"
+    "     - Sample the true grey color from the panel edge (bottom edge, corner, or any zone "
+    "clearly NOT hit by the studio light)\n"
+    "     - Fill the ENTIRE washed-out zone with that true grey, blending at edges\n"
+    "     - The panel must end up the same grey all the way across — not bright in the center\n"
+    "     - Do NOT leave a large bright zone just because it is 'gradual' — gradual is still wrong\n\n"
+    "   SILVER/GREY CAR — WHEN IN DOUBT, REMOVE IT:\n"
+    "   For silver, grey, and metallic grey cars: if you are unsure whether a bright zone is "
+    "natural metallic variation or a studio hotspot — REMOVE IT. The cost of accidentally "
+    "flattening a small natural shimmer is lower than the cost of leaving a visible white "
+    "reflection blob. Err on the side of removing bright zones, not keeping them.\n\n"
+    "   AFTER REMOVING REFLECTION FROM METALLIC PAINT:\n"
+    "   The treated area must still look like metallic grey paint — it must have the same silvery "
+    "tone and subtle depth as the darkest unaffected area of that same panel. It must NOT look "
+    "like flat uniform grey (no metallic character). Fill with the true sampled grey and add "
+    "the same subtle metallic texture visible in the reference area.\n"
+    "   FORBIDDEN: leaving any near-white zone on any panel of a grey or silver car. Any near-white "
+    "zone remaining after your edit = reflection not removed = edit has FAILED on that panel.\n\n"
 
     "   SCAN EVERY PANEL — REMOVE HOTSPOTS, RESTORE TRUE COLOR:\n"
     "   → ROOF: find true roof color at panel edges → remove all brighter zones → fill with true color\n"
@@ -266,6 +296,11 @@ ENHANCE_PROMPT = (
     "   [ ] Car paint color — is it the SAME color as original? Same hue, same saturation, same darkness?\n"
     "   [ ] All body panels (roof, hood, doors, fenders, quarters, tailgate, bumpers) — free of bright "
     "streaks, blobs, washed-out zones? Every hotspot filled with the locked true paint color?\n"
+    "   [ ] GREY/SILVER/METALLIC CAR SPECIFIC: Scan every panel for near-white zones. If ANY panel "
+    "area looks white or near-white rather than grey — that is a remaining reflection. Fix it NOW "
+    "before returning. Grey cars are the most common failure case for reflection removal.\n"
+    "   [ ] GREY/SILVER/METALLIC CAR SPECIFIC: Are there any panels that look 'washed out' or "
+    "lighter than the true grey you sampled? Even a broad gradual whitewash counts. Fix it.\n"
     "   [ ] Windshield — dark, no bright patches?\n"
     "   [ ] Front door windows — dark, matching each other?\n"
     "   [ ] Rear door windows — dark?\n"
@@ -1212,7 +1247,16 @@ def process_car_image(
             client, ENHANCE_PROMPT, stage2_bytes, aspect, f"{filename}[edit]"
         )
         result_pil = _extract_image_from_response(response)
-        logger.info("Stage 2 output received at %s — upscaling to %dx%d", result_pil.size, orig_w, orig_h)
+        logger.info("Stage 2 output received at %s", result_pil.size)
+
+        # Floor color correction: Gemini shifts the floor color even with strong preserve
+        # instructions. Correct by computing the median color drift between the original
+        # and Stage 2 output, then applying a mean-shift to the floor pixels only.
+        if result_pil.size != pil_img_small.size:
+            result_pil = result_pil.resize(pil_img_small.size, Image.Resampling.LANCZOS)
+        car_mask_np = _get_car_mask_rembg(pil_img_small)
+        result_pil = _restore_floor_from_original(pil_img_small, result_pil, car_mask_np)
+        logger.info("Floor color correction applied for %s — upscaling to %dx%d", filename, orig_w, orig_h)
 
     else:
         if background == "transparent":
