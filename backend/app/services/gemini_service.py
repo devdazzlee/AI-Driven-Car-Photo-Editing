@@ -332,13 +332,43 @@ ENHANCE_PROMPT = (
     "   A bright white rectangular or oval area on a side window is ALWAYS a studio light reflection.\n"
     "   Do not confuse it with 'interior visible through glass' — the interior is dark, not white.\n\n"
 
+    "   ══════════════════════════════════════════════════════════════════\n"
+    "   FRONT-VIEW SHOTS — FULL WINDSHIELD REFLECTION (MOST CRITICAL CASE):\n"
+    "   ══════════════════════════════════════════════════════════════════\n"
+    "   When the car is photographed HEAD-ON (front view), the studio lights are directly\n"
+    "   in front of the camera. This causes the ENTIRE WINDSHIELD to appear as a large\n"
+    "   bright white or light-grey rectangle — the whole glass surface is one big reflection.\n"
+    "   *** THIS ENTIRE BRIGHT WINDSHIELD = ONE MASSIVE STUDIO REFLECTION. REMOVE ALL OF IT. ***\n\n"
+    "   HOW TO FIND THE G1 REFERENCE WHEN THE WHOLE WINDSHIELD IS BRIGHT:\n"
+    "   The entire windshield may look white with no dark area visible at first glance.\n"
+    "   In this case, find the reference using this priority order:\n"
+    "     1. Look at the very BOTTOM CORNERS of the windshield (near the A-pillars at the base).\n"
+    "        These corners receive the least direct light and are often the darkest zone.\n"
+    "     2. Look at the EDGES of the windshield frame (right along the rubber seal).\n"
+    "        The glass immediately bordering the frame is usually the darkest part.\n"
+    "     3. Look through the windshield into the cabin — even in a heavily reflected shot,\n"
+    "        you can often see the dashboard, steering wheel, or partition mesh as dark shapes.\n"
+    "        Use the tone of those interior objects as your reference.\n"
+    "     4. If ALL of the above look bright/white — the reference tone is dark grey (L≈40-60\n"
+    "        in LAB, approximately RGB 50-80, 50-80, 50-80). Use this as the fill target.\n"
+    "        This is what clean car glass looks like. Never leave the windshield white.\n\n"
+    "   FRONT-VIEW WINDSHIELD RULE — ABSOLUTE:\n"
+    "   If the windshield in your output is WHITE or BRIGHT GREY → the edit has FAILED.\n"
+    "   A clean windshield on a front-view shot must look DARK (dark grey to near-black),\n"
+    "   with interior shapes (dash, steering wheel, seats, partition) faintly perceptible.\n"
+    "   If your output windshield is still bright after treatment → fill the entire windshield\n"
+    "   again with the dark reference tone until it is no longer bright. Do not return until done.\n\n"
+
     "   STEP-BY-STEP GLASS TREATMENT — APPLY TO EVERY WINDOW INDIVIDUALLY:\n\n"
 
     "   Step G1 — FIND THE REFERENCE TONE FOR THIS WINDOW:\n"
     "   Find the darkest area on this specific window pane where you can see into the car interior\n"
     "   (you see dark seat shapes or dark interior panels through the glass).\n"
     "   That darkest interior-showing zone = REFERENCE TONE for this window.\n"
-    "   It will be dark grey, dark teal, or near-black. Remember it.\n\n"
+    "   It will be dark grey, dark teal, or near-black. Remember it.\n"
+    "   IF NO DARK AREA IS VISIBLE (entire window is bright): use the bottom corner of the window\n"
+    "   or the edge along the rubber seal — these are always the least-lit zones. If even those\n"
+    "   are bright, use a dark grey reference (RGB ~60, 60, 60) — that is what clean glass looks like.\n\n"
 
     "   Step G2 — MARK EVERY BRIGHT ZONE ON THIS WINDOW:\n"
     "   Scan the entire window. Mark EVERY zone that is brighter than the G1 reference tone:\n"
@@ -347,20 +377,27 @@ ENHANCE_PROMPT = (
     "     → Bright diagonal or angular streaks → MARK\n"
     "     → Any zone where the glass looks foggy, hazy, or washed-out → MARK\n"
     "     → Any zone where the interior shapes become invisible because the glass is too bright → MARK\n"
-    "   Do not skip partial reflections or faint patches. Mark all of them.\n\n"
+    "     → THE ENTIRE WINDSHIELD if it is mostly white/bright in a front-view shot → MARK ALL OF IT\n"
+    "   Do not skip partial reflections or faint patches. Mark all of them.\n"
+    "   A reflection covering 90% of the windshield is still 100% a reflection — mark all of it.\n\n"
 
     "   Step G3 — FILL EVERY MARKED ZONE:\n"
     "   Fill each marked zone with the G1 reference tone.\n"
     "   The filled area must: look like dark glass, match G1 in darkness and hue, blend at edges.\n"
-    "   The result: the filled zone looks identical to the natural dark glass reference area.\n\n"
+    "   The result: the filled zone looks identical to the natural dark glass reference area.\n"
+    "   For large full-windshield fills: the entire windshield should become dark grey/near-black,\n"
+    "   with subtle interior shapes (dash, steering wheel) perceptible through the glass.\n\n"
 
     "   Step G4 — VERIFY AND REPEAT:\n"
     "   After filling: compare the entire window again to the G1 reference.\n"
     "   Is any area still brighter? → Mark it. Fill it. Repeat until the ENTIRE window matches G1.\n"
-    "   The window is complete only when EVERY part of it is the same darkness as the reference.\n\n"
+    "   The window is complete only when EVERY part of it is the same darkness as the reference.\n"
+    "   For front-view shots: the windshield must NOT be white or bright grey in the output.\n\n"
 
     "   TREAT EVERY WINDOW — MANDATORY — DO NOT SKIP:\n"
     "   → WINDSHIELD: Apply G1–G4. All bright patches removed. Interior perceptible as dark shapes.\n"
+    "     FRONT-VIEW SPECIAL: If the whole windshield is a bright white rectangle — fill ALL of it.\n"
+    "     The entire windshield must be DARK in the output. No exceptions.\n"
     "   → FRONT DOOR WINDOW: Apply G1–G4. Remove all bright zones including faint grey patches.\n"
     "   → REAR DOOR WINDOW(S): Apply G1–G4. Must match front door window darkness.\n"
     "   → REAR QUARTER GLASS (small pane behind rear door): HIGH FAILURE RISK — always skipped.\n"
@@ -376,7 +413,8 @@ ENHANCE_PROMPT = (
     "   Mirror FACE (reflective disc) = if blown-out white → fill with natural mid-grey tone.\n\n"
 
     "   GLASS FINAL CHECK — ALL MUST PASS BEFORE RETURNING:\n"
-    "   [ ] Windshield — dark, matches reference tone, no bright patches, interior perceptible\n"
+    "   [ ] Windshield — DARK (not white, not bright grey), no bright patches, interior perceptible\n"
+    "   [ ] FRONT-VIEW CHECK: Is the windshield still white or very bright? → NOT DONE. Fill it dark.\n"
     "   [ ] Front door window — dark, matches reference, no bright/grey patches\n"
     "   [ ] Rear door window(s) — dark, same tone as front door window\n"
     "   [ ] Rear quarter glass — DARK, same as adjacent door window (this is most commonly missed)\n"
@@ -593,17 +631,81 @@ FLOOR_CLEAN_PROMPT = (
 )
 
 BACKGROUND_REMOVAL_PROMPT = (
-    "Remove the background from this car photo. "
-    "Replace the background with a clean solid white background. "
-    "Keep the car exactly as it is - preserve all details, colors, and reflections. "
-    "Return only the edited image, no text."
+    "Remove the background from this car photo and replace it with a clean solid white background.\n\n"
+
+    "══════════════════════════════════════════════════════════════════════\n"
+    "ABSOLUTE RULE — THE VEHICLE IS UNTOUCHABLE:\n"
+    "You are editing the BACKGROUND ONLY. Every single part of the vehicle must remain\n"
+    "100% unchanged — body, panels, glass, trim, wheels, lights, mirrors, bumpers, and\n"
+    "EVERYTHING physically attached to or resting on the vehicle.\n"
+    "══════════════════════════════════════════════════════════════════════\n\n"
+
+    "ROOF RACK AND ROOF CARGO — THIS IS THE MOST CRITICAL RULE:\n"
+    "Work vans and commercial vehicles carry cargo on their roof racks. This cargo may include:\n"
+    "  → Large diameter pipes or tubes (PVC, conduit, metal pipe) lying horizontally on the rack\n"
+    "  → Ladders lying flat on top of the vehicle\n"
+    "  → Lumber, planks, or long materials strapped to the rack\n"
+    "  → Tool cases, storage boxes, or equipment mounted on the rack\n"
+    "*** THIS CARGO IS NOT STUDIO EQUIPMENT. IT IS THE CUSTOMER'S CARGO. DO NOT REMOVE IT. ***\n"
+    "The test: does the object rest ON the vehicle or the vehicle's rack? → KEEP IT.\n"
+    "A pipe/tube/ladder on TOP of the vehicle = vehicle cargo = KEEP IT.\n"
+    "Studio lights on the ceiling = studio equipment = remove them (replace with white).\n\n"
+
+    "VEHICLE PARTS THAT MUST NEVER BE REMOVED OR ALTERED:\n"
+    "  → Roof rack frame (rails, cross-bars, uprights) — KEEP exactly\n"
+    "  → ALL cargo on the roof rack (pipes, ladders, tubes, equipment) — KEEP exactly\n"
+    "  → Radio antenna, shark fin antenna, any mast on the roof — KEEP exactly\n"
+    "  → Step bars / running boards (horizontal bars below the doors) — KEEP exactly\n"
+    "  → All body panels, trim, door handles, mirrors, wipers — KEEP exactly\n"
+    "  → Every part visible in the original must remain visible in the same position\n\n"
+
+    "WHAT TO REPLACE WITH WHITE:\n"
+    "  → Studio walls, ceiling, floor, studio infrastructure — replace with white\n"
+    "  → Studio lights, softboxes, light stands, cables on ceiling/walls — replace with white\n"
+    "  → Only objects proven to be attached to the BUILDING (not the vehicle)\n\n"
+
+    "If there is ANY doubt whether an object is studio equipment or vehicle cargo — KEEP IT.\n\n"
+
+    "Return only the edited image with no text or watermarks."
 )
 
 BACKGROUND_REMOVAL_TRANSPARENT_PROMPT = (
-    "Remove the background from this car photo. "
-    "Make the background fully transparent. "
-    "Keep the car exactly as it is - preserve all details, colors, and reflections. "
-    "Return only the edited image with transparent background, no text."
+    "Remove the background from this car photo and make it fully transparent.\n\n"
+
+    "══════════════════════════════════════════════════════════════════════\n"
+    "ABSOLUTE RULE — THE VEHICLE IS UNTOUCHABLE:\n"
+    "You are editing the BACKGROUND ONLY. Every single part of the vehicle must remain\n"
+    "100% unchanged — body, panels, glass, trim, wheels, lights, mirrors, bumpers, and\n"
+    "EVERYTHING physically attached to or resting on the vehicle.\n"
+    "══════════════════════════════════════════════════════════════════════\n\n"
+
+    "ROOF RACK AND ROOF CARGO — THIS IS THE MOST CRITICAL RULE:\n"
+    "Work vans and commercial vehicles carry cargo on their roof racks. This cargo may include:\n"
+    "  → Large diameter pipes or tubes (PVC, conduit, metal pipe) lying horizontally on the rack\n"
+    "  → Ladders lying flat on top of the vehicle\n"
+    "  → Lumber, planks, or long materials strapped to the rack\n"
+    "  → Tool cases, storage boxes, or equipment mounted on the rack\n"
+    "*** THIS CARGO IS NOT STUDIO EQUIPMENT. IT IS THE CUSTOMER'S CARGO. DO NOT REMOVE IT. ***\n"
+    "The test: does the object rest ON the vehicle or the vehicle's rack? → KEEP IT.\n"
+    "A pipe/tube/ladder on TOP of the vehicle = vehicle cargo = KEEP IT.\n"
+    "Studio lights on the ceiling = studio equipment = remove them (make transparent).\n\n"
+
+    "VEHICLE PARTS THAT MUST NEVER BE REMOVED OR ALTERED:\n"
+    "  → Roof rack frame (rails, cross-bars, uprights) — KEEP exactly\n"
+    "  → ALL cargo on the roof rack (pipes, ladders, tubes, equipment) — KEEP exactly\n"
+    "  → Radio antenna, shark fin antenna, any mast on the roof — KEEP exactly\n"
+    "  → Step bars / running boards (horizontal bars below the doors) — KEEP exactly\n"
+    "  → All body panels, trim, door handles, mirrors, wipers — KEEP exactly\n"
+    "  → Every part visible in the original must remain visible in the same position\n\n"
+
+    "WHAT TO MAKE TRANSPARENT:\n"
+    "  → Studio walls, ceiling, floor, studio infrastructure — make transparent\n"
+    "  → Studio lights, softboxes, light stands, cables on ceiling/walls — make transparent\n"
+    "  → Only objects proven to be attached to the BUILDING (not the vehicle)\n\n"
+
+    "If there is ANY doubt whether an object is studio equipment or vehicle cargo — KEEP IT.\n\n"
+
+    "Return only the edited image with transparent background, no text or watermarks."
 )
 
 # Gemini 3.1 Flash Image only accepts these aspect ratios
@@ -1138,6 +1240,7 @@ def _scale_mask(mask_np: np.ndarray, target_w: int, target_h: int) -> np.ndarray
 def _force_wall_background_white(
     processed: Image.Image,
     car_mask_np: np.ndarray,
+    brightness_threshold: int = 130,
 ) -> Image.Image:
     """
     Force all wall/ceiling background pixels to pure white (#FFFFFF).
@@ -1151,8 +1254,18 @@ def _force_wall_background_white(
       - Grey gradient / hollow shadow that Gemini renders on the infinity cove wall
       - Any off-white, grey, or tonal variation Gemini left in the wall/ceiling area
 
-    Scope: ONLY non-car pixels in the upper portion of the frame (wall/ceiling zone).
-    The floor and all car pixels are never touched by this function.
+    Scope: ONLY non-car pixels in the upper portion of the frame (wall/ceiling zone)
+    that are ALREADY light-colored (brightness >= threshold).
+
+    Why the brightness check is critical:
+      rembg generates the car mask from the main vehicle body. It reliably MISSES thin
+      elements that extend above the car body — antenna masts, thin roof equipment, etc.
+      Those pixels are NOT in car_mask, so without the brightness check they would be
+      forced to white, erasing them from the image.
+      Car parts (antenna rods, dark roof equipment) are DARK (brightness < 130).
+      Studio walls/cyclorama shadows are LIGHT (brightness >= 130, usually >= 160).
+      The brightness threshold separates them: only light pixels get whited out,
+      dark pixels are preserved even when rembg missed them in the car mask.
 
     The wall zone is defined as the top 58% of the frame height. The floor zone
     starts around 55-60% so there is a small safe overlap — floor correction
@@ -1171,15 +1284,26 @@ def _force_wall_background_white(
     wall_row_mask = np.zeros((ph, pw), dtype=bool)
     wall_row_mask[:wall_row_end, :] = True
 
-    # Apply only to background (non-car) pixels in wall zone
+    # Non-car pixels in wall zone
     wall_bg_mask = (~car_mask) & wall_row_mask
 
+    # Only whiten pixels that are already light-colored (actual studio background).
+    # Dark pixels (< brightness_threshold) in the wall zone are likely car parts
+    # (antenna masts, roof cargo, thin structures) that rembg missed — preserve them.
+    pixel_brightness = proc_np.mean(axis=2)  # per-pixel mean across RGB channels
+    light_pixel_mask = pixel_brightness >= brightness_threshold
+
+    # Final mask: non-car AND wall zone AND already light-colored
+    final_mask = wall_bg_mask & light_pixel_mask
+
+    preserved_count = int(wall_bg_mask.sum()) - int(final_mask.sum())
     result_np = proc_np.copy()
-    result_np[wall_bg_mask] = [255, 255, 255]
+    result_np[final_mask] = [255, 255, 255]
 
     logger.info(
-        "Wall background: forced %d pixels to pure white (wall/ceiling zone, top 58%%)",
-        int(wall_bg_mask.sum()),
+        "Wall background: forced %d pixels to white (top 58%%, brightness>=%d); "
+        "preserved %d dark pixels (likely car parts rembg missed)",
+        int(final_mask.sum()), brightness_threshold, preserved_count,
     )
     return Image.fromarray(result_np)
 
@@ -1386,6 +1510,13 @@ def process_car_image(
         response = _call_gemini_with_retry(client, prompt, img_bytes, aspect, filename)
         result_pil = _extract_image_from_response(response)
         logger.info("Gemini output received at %s — upscaling to %dx%d", result_pil.size, orig_w, orig_h)
+
+    # Flip correction: Gemini sometimes mirrors the image horizontally.
+    # Detect this by comparing the car mass position and column correlation
+    # against the original, then flip back if needed.
+    if _is_flipped(pil_img_small, result_pil):
+        result_pil = ImageOps.mirror(result_pil)
+        logger.info("Flip corrected: image was mirrored by Gemini, restored to original orientation")
 
     # Upscale Gemini output back to original full resolution (no pixel mixing or modifications)
     if result_pil.size != (orig_w, orig_h):
