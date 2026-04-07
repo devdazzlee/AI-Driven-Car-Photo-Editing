@@ -29,88 +29,44 @@ RETRY_DELAY_SECONDS = 10
 # --- Prompts ---
 
 ENHANCE_PROMPT = (
-    "Edit this car dealership photo with these exact instructions:\n\n"
+    "Edit this car dealership photo. You have exactly TWO jobs:\n"
+    "  JOB 1 — Make the studio background (walls and ceiling) pure white.\n"
+    "  JOB 2 — Remove studio light reflections from the car's painted panels and glass.\n"
+    "Everything else stays pixel-identical to the input. The floor, the car, every car part — unchanged.\n\n"
 
     "══════════════════════════════════════════════════════════════════════\n"
-    "PRIME DIRECTIVE — READ BEFORE ANYTHING ELSE:\n"
-    "YOU ARE EDITING THE BACKGROUND ONLY. THE VEHICLE AND EVERYTHING ON IT IS UNTOUCHABLE.\n"
-    "This means: every single part, component, accessory, and piece of cargo that is\n"
-    "physically touching or resting on the vehicle must remain 100% unchanged.\n"
-    "This includes: the body, all panels, all glass, all trim, all wheels, all lights,\n"
-    "the roof rack, the roof rack frame, ALL CARGO ON THE ROOF RACK (pipes, tubes, ladders,\n"
-    "lumber, tools — whatever is on the rack), step bars, running boards, antenna, wipers,\n"
-    "mirrors, and every other part visible on the vehicle.\n"
-    "The ONLY things you may remove are objects physically attached to the BUILDING\n"
-    "(studio walls, ceiling, floor of the studio) that are NOT touching the vehicle.\n"
+    "PRIME DIRECTIVE — THE VEHICLE IS 100% UNTOUCHABLE:\n"
+    "Every part of the vehicle must remain exactly as it appears in the input.\n"
+    "This includes: body panels, glass, trim, wheels, lights, roof rack, roof rack frame,\n"
+    "ALL CARGO ON THE ROOF RACK (pipes, tubes, ladders, lumber, tools — whatever is on the rack),\n"
+    "step bars, running boards, antenna, wipers, mirrors, and every other part on the vehicle.\n"
+    "Only remove objects physically attached to the BUILDING (walls, ceiling) that do NOT touch the vehicle.\n"
     "If ANY object touches the vehicle — it STAYS. No exceptions.\n"
     "══════════════════════════════════════════════════════════════════════\n\n"
 
-    "STEP A — SAMPLE AND LOCK THE CAR'S TRUE PAINT COLOR (DO THIS FIRST, BEFORE ANY EDITING):\n\n"
+    "1. COMPOSITION: Do NOT flip, mirror, rotate, zoom, or move the car. "
+    "Output dimensions must be identical to input. Every part visible in input must remain visible.\n\n"
 
-    "RULE: Studio lights come from ABOVE and FRONT. They make the UPPER and FRONT-FACING surfaces\n"
-    "brighter. The LOWER edges, BOTTOM third, and SIDE-FACING surfaces of panels are always the\n"
-    "LEAST affected by studio light. These are your ONLY valid reference sampling zones.\n\n"
+    "STEP A — LOCK THE TRUE PAINT COLOR BEFORE EDITING ANYTHING:\n\n"
 
-    "WHERE TO SAMPLE THE TRUE PAINT COLOR — MANDATORY SAMPLING ZONES:\n"
-    "   → Bottom edge of any door panel (lowest 10% of the door height)\n"
-    "   → Bottom edge of any fender (lowest 10% of the fender)\n"
-    "   → The lower rocker panel area\n"
-    "   → Any area in the shadow/underside of a body crease or overhang\n"
-    "   → The rear face of the vehicle if shooting from the front (less lit from front-mounted lights)\n"
-    "   NEVER sample from: upper panel surfaces, front-facing surfaces, any zone that looks\n"
-    "   lighter/brighter, or any area near the roof. Those zones ARE contaminated by studio light.\n\n"
+    "Studio lights come from ABOVE and FRONT — they contaminate upper/front surfaces.\n"
+    "The ONLY valid sampling zones are: bottom edge of door panels (lowest 10%), bottom of fenders,\n"
+    "lower rocker panel, shadow side of a body crease. NEVER sample upper/front-facing areas.\n\n"
 
     "TRUE PAINT COLOR BY CAR COLOR:\n"
-    "   - BLACK/CHARCOAL/GRAPHITE/VERY DARK car: true color = near-black or very deep dark tone.\n"
-    "     Sample from the bottom edge of a door or the lower rocker. That near-black = the truth.\n"
-    "     ANY area of the car lighter than this dark reference = a studio reflection = must be removed.\n"
-    "     These cars commonly have LARGE reflections covering their entire front or upper panels.\n"
-    "   - DARK BROWN/DARK GREY car: same approach — sample lowest door edge for the darkest true tone.\n"
-    "   - DARK BLUE/NAVY car: true color = deepest blue area at bottom of panel, NOT lighter blue-grey.\n"
-    "   - DARK GREEN car: true color = deepest green at panel bottom edge.\n"
-    "   - WHITE car: true color = smooth even white away from any extra-bright blobs.\n"
-    "   - GREY/SILVER METALLIC: true color = mid-tone metallic grey in the bottom-third of any panel.\n"
-    "   - ANY OTHER COLOR: true color = richest, most saturated version at the bottom edge of a panel.\n\n"
+    "   - BLACK/CHARCOAL/GRAPHITE/VERY DARK: true color = near-black at bottom door edge.\n"
+    "     ANY lighter area on the car = studio reflection = must be filled.\n"
+    "   - DARK BROWN/DARK GREY: same — sample lowest door edge.\n"
+    "   - DARK BLUE/NAVY: true color = deepest blue at panel bottom, NOT lighter blue-grey.\n"
+    "   - DARK GREEN: true color = deepest green at panel bottom edge.\n"
+    "   - WHITE: true color = even white away from any extra-bright blobs.\n"
+    "   - GREY/SILVER METALLIC: true color = mid-tone metallic grey in bottom-third of panel.\n"
+    "   - ANY OTHER COLOR: true color = richest, most saturated version at panel bottom edge.\n\n"
 
     "CRITICAL — LARGE REFLECTIONS ON DARK CARS:\n"
-    "   On dark (black, charcoal, graphite, dark grey, dark brown) cars, studio reflections are\n"
-    "   EXTREMELY VISIBLE because the contrast between dark paint and bright light is high.\n"
-    "   Reflections on dark cars can be VERY LARGE — covering 30-60% of a panel's surface area.\n"
-    "   Do NOT assume a large bright area is 'part of the car'. Even if a bright zone covers most\n"
-    "   of the hood or fender, if it is lighter than the sampled dark reference → it is a reflection.\n"
-    "   You MUST fill the ENTIRE bright zone — including large zones — with the true dark paint color.\n"
-    "   Partial filling of a large reflection is NOT acceptable. Fill completely edge-to-edge.\n\n"
-
-    "STEP B — MEMORIZE THE FLOOR IDENTITY (FOR VERIFICATION — NOT FOR REGENERATION):\n"
-    "Immediately after locking the car color, look at the floor in the input image and "
-    "memorize these specific properties — you will use them to verify your output:\n"
-    "   1. TILE SIZE: Large tiles (30cm+)? Medium? Small? Measure relative to the car wheel.\n"
-    "   2. TILE MATERIAL: Stone/slate with texture? Smooth concrete? Ceramic? Rough or smooth?\n"
-    "   3. TILE COLOR: Dominant color — dark grey-brown? Light grey? Beige? Be specific.\n"
-    "   4. TILE DARKNESS: How dark overall on a scale 1-10?\n"
-    "   5. GROUT: Wide grout lines? Narrow? Same color as tile or contrasting?\n"
-    "These five values = the FLOOR IDENTITY. Your output floor must match ALL FIVE.\n"
-    "This is a READ-ONLY record for verification. It does NOT give you permission to "
-    "recolor, regenerate, or reimagine the floor. The floor must stay exactly as it is.\n\n"
-
-    "1. COMPOSITION AND FRAMING — THE CAR MUST NOT MOVE (ABSOLUTE RULE):\n"
-    "   This is not a creative photo shoot. You are editing the background only. "
-    "The car's position, angle, and framing are LOCKED and must not change under any circumstances.\n"
-    "   - Do NOT change the camera angle, perspective, zoom level, or viewing angle.\n"
-    "   - The car's viewing angle in the output must be IDENTICAL to the input. "
-    "If the input shows a front-left three-quarter view, the output must show the same "
-    "front-left three-quarter view — not more front-on, not more side-on. Same exact angle.\n"
-    "   - Do NOT rotate or reposition the car. Do NOT zoom in or out. "
-    "Do NOT reframe or recompose the shot.\n"
-    "   - Do NOT flip or mirror the image horizontally or vertically.\n"
-    "   - CRITICAL: Even when removing the garage door, studio equipment, or cleaning the "
-    "background — the car must NOT move. When background elements are removed and replaced "
-    "with white, the car stays in exactly the same pixel position it was in the input. "
-    "Do not adjust the car's position to 'fill' the cleaned background area.\n"
-    "   - The license plate must appear at the exact same position and size in the frame.\n"
-    "   - Never cut off bumpers, mirrors, roof, hood, trunk or any other part of the car.\n"
-    "   - Every part visible in the original must remain visible and in the same position.\n"
-    "   - Return the image at exactly the same dimensions as the input.\n\n"
+    "   Dark cars have VERY LARGE reflections (30-60% of a panel). Do NOT assume a large bright\n"
+    "   zone is part of the car. If it is lighter than the bottom-edge reference → it is a reflection.\n"
+    "   Fill the ENTIRE bright zone edge-to-edge. Partial fills are NOT acceptable.\n\n"
 
     "2. BACKGROUND — WALLS AND CEILING:\n"
     "   *** STEP ZERO — DO THIS FIRST, BEFORE ANYTHING ELSE ***\n"
@@ -123,92 +79,14 @@ ENHANCE_PROMPT = (
     "white wall — like white copy paper behind the car. No curves, no shadows, no dome, no grey. "
     "Pure blank white behind and above the car.\n\n"
     "   AFTER PAINTING BACKGROUND WHITE — VERIFY BEFORE CONTINUING:\n"
-    "   Look at the top half of your output. Ask yourself: do I see ANY grey shape, curved arc, "
-    "dome, gradient, or shadow in the background? If YES — paint it white. Do not proceed to "
-    "step 3 or 4 until the answer is NO. The background is only complete when it is pure flat "
-    "white with absolutely no grey anywhere.\n\n"
-    "   RULE A — ALSO REMOVE ALL OF THESE (replace every item below with pure white #FFFFFF):\n"
-    "   GARAGE DOOR: If you see a garage door in the background — a large rectangular door "
-    "with horizontal panel sections and metal hinges, typically on the right or left side of "
-    "the background — REPLACE IT ENTIRELY WITH FLAT WHITE. The entire garage door and its "
-    "frame must disappear and become pure white. This is not optional.\n"
-    "   WHAT TO REMOVE (studio infrastructure only — things fixed to the building):\n"
-    "   REMOVE: Studio lights, softbox lights, light stands, flash heads, ceiling rigs,\n"
-    "   overhead cables and wiring, camera stands, tripods, door frames, door hinges,\n"
-    "   door handles, and any equipment that is mounted on the studio WALL or CEILING.\n"
-    "   HOW TO IDENTIFY STUDIO EQUIPMENT: It is attached to the BUILDING — the wall, ceiling,\n"
-    "   or floor of the studio. It is NOT sitting on, resting on, or connected to the vehicle.\n\n"
+    "   The background is complete when: pure flat #FFFFFF wall and ceiling, no grey, no dome shadow.\n"
+    "   REMOVE (replace with #FFFFFF): studio lights, softboxes, light stands, ceiling rigs,\n"
+    "   cables on walls/ceiling, camera stands, tripods, garage doors, door frames.\n"
+    "   KEEP: everything touching the vehicle — roof rack cargo, antennas, step bars, all parts.\n"
+    "   If in doubt whether something is studio equipment or vehicle cargo → KEEP IT.\n\n"
 
-    "   ══════════════════════════════════════════════════════════════════\n"
-    "   CRITICAL EXCEPTION — DO NOT REMOVE VEHICLE PARTS OR VEHICLE CARGO\n"
-    "   ══════════════════════════════════════════════════════════════════\n"
-    "   The rule is simple: if it is touching the vehicle, it stays. Period.\n"
-    "   Everything physically attached to or resting on the vehicle is a VEHICLE COMPONENT\n"
-    "   or VEHICLE CARGO and must remain exactly as it appears in the input image.\n\n"
-
-    "   THE MOST COMMON AI MISTAKE — ROOF RACK CARGO (READ THIS CAREFULLY):\n"
-    "   Work vans and trucks often have roof racks carrying cargo: ladders, pipes, tubes,\n"
-    "   conduit, lumber, tools, equipment cases, or other materials strapped to the roof.\n"
-    "   This cargo sits on TOP of the vehicle's roof rack frame.\n"
-    "   *** THE AI OFTEN MISTAKES ROOF RACK CARGO FOR STUDIO LIGHTING EQUIPMENT ***\n"
-    "   *** THIS IS WRONG. ROOF RACK CARGO IS THE CUSTOMER'S PROPERTY. DO NOT REMOVE IT. ***\n"
-    "   → If you see a large pipe, tube, ladder, plank, or any object lying horizontally\n"
-    "     across the top of the vehicle — it is CARGO on a roof rack. DO NOT REMOVE IT.\n"
-    "   → If you see a cylindrical object, PVC pipe, conduit, or round tube on the vehicle\n"
-    "     roof — it is CARGO. DO NOT REMOVE IT.\n"
-    "   → The roof rack FRAME (metal rails, cross-bars, uprights) — DO NOT REMOVE.\n"
-    "   → Everything on the roof rack, including any cargo loaded on it — DO NOT REMOVE.\n"
-    "   → The test: does the object touch or rest on the vehicle? YES → keep it. NO → remove it.\n\n"
-
-    "   OTHER VEHICLE PARTS THAT MUST NEVER BE REMOVED:\n"
-    "     * Radio antenna, shark fin antenna, mast antenna on the roof\n"
-    "     * Windshield wipers, side mirror mounts, roof rails, roof vents\n"
-    "     * STEP BARS and RUNNING BOARDS (ABSOLUTE RULE — DO NOT REMOVE):\n"
-    "       These are the horizontal metal bars/steps running along the bottom side of the\n"
-    "       vehicle between the wheels, at door-sill height. They help passengers step up.\n"
-    "       They appear as a dark horizontal bar or step below the door(s).\n"
-    "       DO NOT remove them. DO NOT paint over them with floor color.\n"
-    "     * Ladder racks, roof cargo racks and all cargo on them\n"
-    "     * Mud flaps, rear reflectors, side reflectors\n"
-    "     * Any trim, panel, or component touching or part of the car body\n"
-    "   → RULE: Only remove objects proven to be attached to the BUILDING (wall/ceiling). "
-    "If there is ANY doubt whether an object is studio equipment or vehicle cargo — KEEP IT.\n"
-    "   RULE B — THE RESULT: The entire wall and ceiling area = perfectly flat pure white "
-    "#FFFFFF. No variation. No grey. No gradients. No curved shapes. No shadows anywhere. "
-    "Every off-white, grey, or tinted pixel above the floor level (that is not the car) "
-    "must be #FFFFFF. This is non-negotiable.\n"
-    "   The ONLY exception: the wall-floor junction line may remain visible and natural.\n\n"
-
-    "3. BACKGROUND — FLOOR:\n\n"
-    "   *** IMPORTANT — THE FLOOR IN THIS IMAGE HAS ALREADY BEEN PRE-CLEANED ***:\n"
-    "   This image has been through a floor-cleaning pre-process. The floor you see in this "
-    "input image is ALREADY CLEAN. The floor color you see IS CORRECT — it matches the "
-    "original tile color.\n"
-    "   YOUR JOB FOR THE FLOOR: PRESERVE IT EXACTLY. Do NOT re-clean it, do NOT 'improve' it, "
-    "do NOT make it darker, do NOT make it lighter. The floor in your output must look "
-    "IDENTICAL to the floor in this input — same color, same tile shade, same darkness.\n"
-    "   WARNING: Do not default to a darker or more 'professional' floor color. The shade "
-    "of grey (or other color) you see in this input IS the correct shade. Preserve it.\n\n"
-
-    "   THE PRIMARY RULE FOR FLOOR IN THIS STAGE: Copy it exactly. "
-    "The floor color, tile shade, tile darkness, tile material, grout — ALL must be PIXEL-IDENTICAL "
-    "to what you see in this input image. Do not make it darker. Do not make it lighter. "
-    "Do not 'improve' it. Just copy it faithfully into the output.\n\n"
-    "   FORBIDDEN FLOOR CHANGES — any of these = edit has FAILED:\n"
-    "   - Output floor is darker than input floor → FORBIDDEN\n"
-    "   - Output floor is lighter than input floor → FORBIDDEN\n"
-    "   - Output tiles are a different size → FORBIDDEN\n"
-    "   - Output tile material changed → FORBIDDEN\n"
-    "   - Output grout is different → FORBIDDEN\n\n"
-    "   IF you spot any remaining dirty mark the pre-clean missed:\n"
-    "   Remove it by filling with the IMMEDIATELY ADJACENT tile color. "
-    "Do not use a darker or lighter fill — match the surrounding tiles exactly. "
-    "Check under the car, between tires, in front of bumper — all zones.\n\n"
-    "   FLOOR VERIFICATION:\n"
-    "   [ ] Floor tile color same darkness/lightness as this input image?\n"
-    "   [ ] Floor tile material/size unchanged?\n"
-    "   [ ] Zero dirty spots remaining?\n"
-    "   If floor color changed (darker or lighter) → REDO floor section.\n\n"
+    "3. FLOOR: This image has been pre-cleaned. PRESERVE THE FLOOR EXACTLY as it appears.\n"
+    "   Do NOT darken, lighten, re-clean, or change the floor in any way. Copy it faithfully.\n\n"
 
     "4. STUDIO REFLECTION REMOVAL — PAINTED BODY PANELS:\n\n"
 
@@ -445,21 +323,9 @@ ENHANCE_PROMPT = (
     "   → Mud flaps, rear reflectors, any trim at the base of the vehicle — keep exactly\n"
     "   → All components at or near the door sill / rocker panel area — keep exactly\n\n"
 
-    "5. CAR COLOR — ABSOLUTE PRESERVATION (THIS OVERRIDES EVERYTHING ELSE):\n"
-    "   The car's paint color in the OUTPUT must be identical to the INPUT — same hue, same "
-    "saturation, same darkness, same finish character. This is non-negotiable and overrides "
-    "any other instruction. Specifically:\n"
-    "   - A dark navy blue car must remain dark navy blue — NOT lighter blue, NOT grey-blue\n"
-    "   - A black car must remain black — NOT dark grey, NOT charcoal\n"
-    "   - A dark green car must remain dark green — NOT lighter green\n"
-    "   - A red car must remain the same red — NOT orange-red, NOT darker red\n"
-    "   - A white car must remain the same white — NOT brighter, NOT cream\n"
-    "   - A silver car must remain the same silver grey — NOT lighter, NOT darker\n"
-    "   If you compare the output car paint to the input car paint and they look different "
-    "in color — the edit has FAILED on color preservation. The reflection removal in Section 4 "
-    "must be done in a way that preserves color exactly. If removing a reflection is causing "
-    "color change, you are sampling the wrong reference color — resample from the darkest "
-    "unaffected area of the panel and try again.\n\n"
+    "5. CAR COLOR: Preserve exact hue, saturation, and darkness. "
+    "Reflection fills must use PANEL_REF color sampled from the darkest area of that panel. "
+    "Never invent a color — always sample from the car itself.\n\n"
 
     "6. TIRES:\n"
     "   Make tires deep black and clean. Remove all dust and discoloration from rubber surface only.\n\n"
@@ -839,32 +705,77 @@ def _find_car_center_x(gray: np.ndarray) -> float:
 
 
 def _is_flipped(original: Image.Image, result: Image.Image) -> bool:
-    """Detect horizontal flip using car mass position and column correlation."""
-    size = (128, 128)
-    orig_gray = np.array(original.resize(size).convert("L"), dtype=np.float64)
-    res_gray = np.array(result.resize(size).convert("L"), dtype=np.float64)
+    """
+    Detect horizontal flip using three independent methods.
 
-    # Method 1: Car mass center-of-gravity
-    orig_cx = _find_car_center_x(orig_gray)
-    res_cx = _find_car_center_x(res_gray)
+    Why the old brightness-profile method failed:
+      - For centered / front-facing cars the mass center is ~0.5 in both images → method 1 always returns False.
+      - The background changes dramatically (studio colours → white), so column-average brightness
+        profiles correlate poorly even without flipping → method 2 gives false negatives.
+
+    New approach — Sobel vertical-edge profiles (method 2 replacement):
+      Vertical edges (door pillars, bumper edges, headlights, mirrors) are stable features
+      that don't change when background lighting changes.  The column profile of |SobelX|
+      captures WHERE vertical edges sit horizontally. If the image is flipped, this profile
+      correlates better with its own mirror image than with the original's profile.
+      This works for off-center AND centered cars because edge patterns are asymmetric
+      (more door edges on one side, exhaust on one side, etc.).
+    """
+    size = (256, 256)
+    orig_gray = np.array(original.resize(size).convert("L"), dtype=np.float32)
+    res_gray  = np.array(result.resize(size).convert("L"),  dtype=np.float32)
+
+    # --- Method 1: Car mass center-of-gravity (works for non-centered cars) ---
+    orig_cx = _find_car_center_x(orig_gray.astype(np.float64))
+    res_cx  = _find_car_center_x(res_gray.astype(np.float64))
     mass_flipped = False
     cx_diff = abs(orig_cx - res_cx)
-    if cx_diff > 0.1:
+    if cx_diff > 0.10:
         mirrored_cx = 1.0 - res_cx
         if abs(orig_cx - mirrored_cx) < abs(orig_cx - res_cx):
             mass_flipped = True
 
-    # Method 2: Column profile correlation
-    orig_profile = orig_gray.mean(axis=0)
-    res_profile = res_gray.mean(axis=0)
-    res_flipped = res_profile[::-1]
-    normal_corr = np.corrcoef(orig_profile, res_profile)[0, 1]
-    flipped_corr = np.corrcoef(orig_profile, res_flipped)[0, 1]
-    corr_flipped = flipped_corr > normal_corr and abs(flipped_corr - normal_corr) > 0.02
+    # --- Method 2: Sobel vertical-edge column profile (works for centered cars too) ---
+    # |SobelX| highlights vertical edges. Column-sum gives how many vertical edges are
+    # at each horizontal position. This is background-independent and asymmetric per car.
+    orig_sobel = np.abs(cv2.Sobel(orig_gray, cv2.CV_32F, 1, 0, ksize=3))
+    res_sobel  = np.abs(cv2.Sobel(res_gray,  cv2.CV_32F, 1, 0, ksize=3))
+    orig_edge_prof = orig_sobel.sum(axis=0)
+    res_edge_prof  = res_sobel.sum(axis=0)
+    res_edge_flip  = res_edge_prof[::-1]
+    if orig_edge_prof.std() > 1e-3 and res_edge_prof.std() > 1e-3:
+        normal_edge_corr = float(np.corrcoef(orig_edge_prof, res_edge_prof)[0, 1])
+        flipped_edge_corr = float(np.corrcoef(orig_edge_prof, res_edge_flip)[0, 1])
+        # Flipped if mirrored profile matches better by a clear margin
+        edge_flipped = (flipped_edge_corr > normal_edge_corr + 0.05)
+    else:
+        normal_edge_corr = flipped_edge_corr = 0.0
+        edge_flipped = False
 
-    is_flip = mass_flipped or corr_flipped
-    if is_flip:
-        logger.warning("Flip detected (mass=%s, corr=%s) — correcting", mass_flipped, corr_flipped)
+    # --- Method 3: Brightness column profile (original method, kept as tiebreaker) ---
+    orig_prof = orig_gray.mean(axis=0)
+    res_prof  = res_gray.mean(axis=0)
+    res_prof_flip = res_prof[::-1]
+    if orig_prof.std() > 1e-3 and res_prof.std() > 1e-3:
+        normal_bright_corr  = float(np.corrcoef(orig_prof, res_prof)[0, 1])
+        flipped_bright_corr = float(np.corrcoef(orig_prof, res_prof_flip)[0, 1])
+        bright_flipped = (flipped_bright_corr > normal_bright_corr + 0.05)
+    else:
+        normal_bright_corr = flipped_bright_corr = 0.0
+        bright_flipped = False
+
+    # Flip confirmed if at least 2 of 3 methods agree (majority vote)
+    votes = sum([mass_flipped, edge_flipped, bright_flipped])
+    is_flip = votes >= 2
+
+    logger.info(
+        "Flip detection: mass=%s (cx_diff=%.3f), edge=%s (corr: %.3f vs %.3f), "
+        "bright=%s (corr: %.3f vs %.3f) → votes=%d → %s",
+        mass_flipped, cx_diff,
+        edge_flipped, normal_edge_corr, flipped_edge_corr,
+        bright_flipped, normal_bright_corr, flipped_bright_corr,
+        votes, "FLIP" if is_flip else "ok",
+    )
     return is_flip
 
 
@@ -972,11 +883,20 @@ def _check_color_accuracy(original: Image.Image, result: Image.Image, client,
     return result
 
 
+# Global rembg session to avoid reloading the model on every request
+REMBG_SESSION = None
+
 def _get_car_mask_rembg(pil_img: Image.Image) -> np.ndarray:
-    """Get boolean mask of the car using rembg."""
+    """Get boolean mask of the car using rembg with the small 'u2netp' model."""
+    global REMBG_SESSION
     try:
-        from rembg import remove
-        mask_pil = remove(pil_img, only_mask=True)
+        from rembg import new_session, remove
+        if REMBG_SESSION is None:
+            # Use u2netp (4MB) instead of u2net (176MB) to avoid OOM on Railway
+            logger.info("Initializing rembg session with u2netp model...")
+            REMBG_SESSION = new_session("u2netp")
+        
+        mask_pil = remove(pil_img, only_mask=True, session=REMBG_SESSION)
         if mask_pil.mode != 'L':
             mask_pil = mask_pil.convert('L')
         return np.array(mask_pil) > 128
@@ -1049,6 +969,11 @@ def _sample_floor_color(pil_img: Image.Image, car_mask_np: np.ndarray) -> tuple[
     Floor = background pixels in the bottom 40% of the frame.
     Returns (R, G, B) as integers.
     """
+    img_np = np.array(pil_img)
+    ih, iw = img_np.shape[:2]
+    mh, mw = car_mask_np.shape
+    if (mh, mw) != (ih, iw):
+        car_mask_np = _scale_mask(car_mask_np, iw, ih)
     h, w = car_mask_np.shape
     background_mask = ~car_mask_np
     floor_row_start = int(h * 0.60)
@@ -1057,7 +982,6 @@ def _sample_floor_color(pil_img: Image.Image, car_mask_np: np.ndarray) -> tuple[
     floor_mask = background_mask & floor_row_mask
     if not floor_mask.any():
         return (200, 200, 200)
-    img_np = np.array(pil_img)
     avg = img_np[floor_mask].mean(axis=0)
     return (int(avg[0]), int(avg[1]), int(avg[2]))
 
@@ -1085,10 +1009,16 @@ def _restore_floor_from_original(
     if original.size != processed.size:
         original = original.resize(processed.size, Image.Resampling.LANCZOS)
 
-    h, w = car_mask_np.shape
-    orig_np = np.array(original).astype(np.float32)
     proc_np = np.array(processed).astype(np.float32)
+    orig_np = np.array(original).astype(np.float32)
+    ph, pw = proc_np.shape[:2]
 
+    # Resize car mask to match the processed image dimensions
+    mh, mw = car_mask_np.shape
+    if (mh, mw) != (ph, pw):
+        car_mask_np = _scale_mask(car_mask_np, pw, ph)
+
+    h, w = car_mask_np.shape
     background_mask = ~car_mask_np
 
     # Floor zone: background pixels in bottom 45% of frame
@@ -1241,6 +1171,7 @@ def _force_wall_background_white(
     processed: Image.Image,
     car_mask_np: np.ndarray,
     brightness_threshold: int = 130,
+    edge_buffer_px: int = 12,
 ) -> Image.Image:
     """
     Force all wall/ceiling background pixels to pure white (#FFFFFF).
@@ -1254,18 +1185,20 @@ def _force_wall_background_white(
       - Grey gradient / hollow shadow that Gemini renders on the infinity cove wall
       - Any off-white, grey, or tonal variation Gemini left in the wall/ceiling area
 
-    Scope: ONLY non-car pixels in the upper portion of the frame (wall/ceiling zone)
-    that are ALREADY light-colored (brightness >= threshold).
+    Two protection layers prevent car pixels from being accidentally forced to white:
 
-    Why the brightness check is critical:
-      rembg generates the car mask from the main vehicle body. It reliably MISSES thin
-      elements that extend above the car body — antenna masts, thin roof equipment, etc.
-      Those pixels are NOT in car_mask, so without the brightness check they would be
-      forced to white, erasing them from the image.
-      Car parts (antenna rods, dark roof equipment) are DARK (brightness < 130).
-      Studio walls/cyclorama shadows are LIGHT (brightness >= 130, usually >= 160).
-      The brightness threshold separates them: only light pixels get whited out,
-      dark pixels are preserved even when rembg missed them in the car mask.
+    Layer 1 — Mask dilation (edge_buffer_px=12):
+      rembg slightly underestimates the car boundary — bumper corners, fender edges,
+      and side panels are often 5-15px inside the true car edge. Without dilation,
+      this 'gap' gets forced to white, creating a visible white halo eating into the
+      car body (especially at bumper/fender corners visible against the background).
+      Dilating the car mask by 12px creates a safe buffer: these boundary pixels are
+      protected from being overwritten regardless of their brightness.
+
+    Layer 2 — Brightness threshold (brightness_threshold=130):
+      rembg also misses thin elements above the car body (antenna masts, roof cargo).
+      Those elements are DARK, so even if they're outside the dilated mask, the
+      brightness check preserves them (only light pixels get forced to white).
 
     The wall zone is defined as the top 58% of the frame height. The floor zone
     starts around 55-60% so there is a small safe overlap — floor correction
@@ -1279,13 +1212,25 @@ def _force_wall_background_white(
     else:
         car_mask = car_mask_np
 
+    # Dilate car mask by edge_buffer_px to create a safety buffer around car edges.
+    # rembg underestimates boundaries by 5-15px; dilation ensures bumper corners
+    # and fender edges are never accidentally painted white.
+    if edge_buffer_px > 0:
+        k = edge_buffer_px * 2 + 1
+        dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+        car_mask_dilated = cv2.dilate(
+            car_mask.astype(np.uint8) * 255, dilate_kernel, iterations=1
+        ) > 128
+    else:
+        car_mask_dilated = car_mask
+
     # Wall/ceiling zone: top 58% of frame rows
     wall_row_end = int(ph * 0.58)
     wall_row_mask = np.zeros((ph, pw), dtype=bool)
     wall_row_mask[:wall_row_end, :] = True
 
-    # Non-car pixels in wall zone
-    wall_bg_mask = (~car_mask) & wall_row_mask
+    # Non-car (using dilated mask) pixels in wall zone
+    wall_bg_mask = (~car_mask_dilated) & wall_row_mask
 
     # Only whiten pixels that are already light-colored (actual studio background).
     # Dark pixels (< brightness_threshold) in the wall zone are likely car parts
@@ -1293,7 +1238,7 @@ def _force_wall_background_white(
     pixel_brightness = proc_np.mean(axis=2)  # per-pixel mean across RGB channels
     light_pixel_mask = pixel_brightness >= brightness_threshold
 
-    # Final mask: non-car AND wall zone AND already light-colored
+    # Final mask: non-car (dilated) AND wall zone AND already light-colored
     final_mask = wall_bg_mask & light_pixel_mask
 
     preserved_count = int(wall_bg_mask.sum()) - int(final_mask.sum())
@@ -1301,9 +1246,9 @@ def _force_wall_background_white(
     result_np[final_mask] = [255, 255, 255]
 
     logger.info(
-        "Wall background: forced %d pixels to white (top 58%%, brightness>=%d); "
-        "preserved %d dark pixels (likely car parts rembg missed)",
-        int(final_mask.sum()), brightness_threshold, preserved_count,
+        "Wall background: forced %d pixels to white (top 58%%, buffer=%dpx, brightness>=%d); "
+        "preserved %d pixels (car edge buffer + dark parts)",
+        int(final_mask.sum()), edge_buffer_px, brightness_threshold, preserved_count,
     )
     return Image.fromarray(result_np)
 
@@ -1425,6 +1370,191 @@ def _clean_floor_spots_inpaint(
 
 
 # ---------------------------------------------------------------------------
+# Quality validation helpers
+# ---------------------------------------------------------------------------
+
+def _check_reflections_remaining(
+    original: Image.Image,
+    result: Image.Image,
+    car_mask_np: np.ndarray,
+) -> tuple[bool, float]:
+    """
+    Check whether studio light reflections remain on the car's painted panels.
+
+    Strategy:
+      Studio reflections make car panels BRIGHTER than they should be.
+      The original image has reflections; the result should have them removed.
+      We measure the 90th-percentile brightness of car pixels in both images.
+      If the result's bright tail is NOT significantly reduced compared to the
+      original, reflections were not properly removed.
+
+      Additionally: we check the proportion of car pixels that are unusually
+      bright relative to the car's own median (these are reflection hotspots).
+      If this proportion is still high in the result → reflections remain.
+
+    Returns:
+      (reflections_remain: bool, reflection_score: float)
+      reflection_score = fraction of car pixels that are hotspots (0.0–1.0).
+      reflections_remain = True if score > threshold (default 0.08 = 8% of car).
+    """
+    if not car_mask_np.any():
+        return False, 0.0
+
+    orig_np   = np.array(original.convert("L"), dtype=np.float32)
+    result_np = np.array(result.convert("L"),   dtype=np.float32)
+
+    # Resize mask to match RESULT dimensions — result may differ from original/mask size
+    rh, rw = result_np.shape[:2]
+    mh, mw = car_mask_np.shape
+    if (mh, mw) != (rh, rw):
+        mask = _scale_mask(car_mask_np, rw, rh)
+    else:
+        mask = car_mask_np
+
+    if not mask.any():
+        return False, 0.0
+
+    result_car = result_np[mask]
+
+    # Median brightness of car pixels in result = true panel color zone
+    car_median = float(np.median(result_car))
+
+    # Hotspot threshold: pixels significantly brighter than the car median
+    # Using median + 40 intensity units as the hotspot line.
+    # This adapts to car color: dark cars have low median, so hotspot = any bright zone.
+    # White cars have high median, so only extra-overexposed zones trigger.
+    hotspot_threshold = min(car_median + 40, 230)
+    hotspot_fraction  = float((result_car > hotspot_threshold).mean())
+
+    # Reflections remain if > 8% of car pixels are hotspots
+    reflections_remain = hotspot_fraction > 0.08
+
+    logger.info(
+        "Reflection check: car median=%.1f, hotspot_threshold=%.1f, "
+        "hotspot_fraction=%.1f%% → %s",
+        car_median, hotspot_threshold, hotspot_fraction * 100,
+        "REFLECTIONS REMAIN" if reflections_remain else "ok",
+    )
+    return reflections_remain, hotspot_fraction
+
+
+def _check_color_drift(
+    original: Image.Image,
+    result: Image.Image,
+    car_mask_np: np.ndarray,
+) -> tuple[bool, float]:
+    """
+    Check whether Gemini changed the car's paint color.
+
+    Compares LAB median of the 30th–80th percentile brightness band of car pixels
+    (paint body only — excludes glass, tires, dark trunk interiors, bright reflections).
+    Returns (color_drifted: bool, drift_amount: float 0.0–1.0).
+    Color is considered drifted if average LAB channel difference > 8 units (≈3%).
+    """
+    if not car_mask_np.any():
+        return False, 0.0
+
+    orig_np   = np.array(original).astype(np.uint8)
+    result_np = np.array(result).astype(np.uint8)
+
+    # Resize mask to match RESULT dimensions
+    rh, rw = result_np.shape[:2]
+    mh, mw = car_mask_np.shape
+    if (mh, mw) != (rh, rw):
+        mask = _scale_mask(car_mask_np, rw, rh)
+    else:
+        mask = car_mask_np
+
+    # Also resize original to match result for consistent LAB comparison
+    if orig_np.shape[:2] != (rh, rw):
+        original = original.resize((rw, rh), Image.Resampling.LANCZOS)
+        orig_np = np.array(original).astype(np.uint8)
+
+    if not mask.any():
+        return False, 0.0
+
+    orig_lab   = cv2.cvtColor(orig_np,   cv2.COLOR_RGB2Lab).astype(np.float32)
+    result_lab = cv2.cvtColor(result_np, cv2.COLOR_RGB2Lab).astype(np.float32)
+
+    # Use 30th–80th percentile of original L to isolate paint body pixels
+    l_vals = orig_lab[mask, 0]
+    l_lo   = float(np.percentile(l_vals, 30))
+    l_hi   = float(np.percentile(l_vals, 80))
+    paint_mask = mask & (orig_lab[:, :, 0] >= l_lo) & (orig_lab[:, :, 0] <= l_hi)
+    if paint_mask.sum() < 50:
+        paint_mask = mask
+
+    orig_med   = np.array([np.median(orig_lab[paint_mask, ch])   for ch in range(3)])
+    result_med = np.array([np.median(result_lab[paint_mask, ch]) for ch in range(3)])
+
+    # LAB units: L is 0–100, A/B are ±128 (scaled to 0–255 in OpenCV).
+    # Normalise all channels to 0–1 for a single drift score.
+    drift_L = abs(float(orig_med[0]) - float(result_med[0])) / 100.0
+    drift_A = abs(float(orig_med[1]) - float(result_med[1])) / 255.0
+    drift_B = abs(float(orig_med[2]) - float(result_med[2])) / 255.0
+    drift   = (drift_L + drift_A + drift_B) / 3.0
+
+    color_drifted = drift > 0.03   # 3% threshold across LAB channels
+
+    logger.info(
+        "Color drift check: LAB orig(%.1f,%.1f,%.1f) → result(%.1f,%.1f,%.1f) "
+        "drift=%.1f%% → %s",
+        orig_med[0], orig_med[1], orig_med[2],
+        result_med[0], result_med[1], result_med[2],
+        drift * 100,
+        "COLOR DRIFTED" if color_drifted else "ok",
+    )
+    return color_drifted, drift
+
+
+def _build_retry_prompt(reflections_remain: bool, reflection_score: float,
+                        color_drifted: bool, color_drift: float) -> str:
+    """
+    Build a targeted retry prompt that tells Gemini exactly what failed in attempt 1.
+    More specific than the general ENHANCE_PROMPT — focuses only on what needs fixing.
+    """
+    issues = []
+    if reflections_remain:
+        issues.append(
+            f"ISSUE 1 — REFLECTIONS NOT REMOVED ({reflection_score*100:.0f}% of car pixels "
+            f"are still bright hotspots):\n"
+            "The previous attempt left studio light reflections on the car panels.\n"
+            "YOU MUST:\n"
+            "  → For EVERY painted panel: sample the bottom edge (lowest 5-10% of panel height).\n"
+            "    That bottom-edge color = PANEL_REF = the true paint color.\n"
+            "  → Fill EVERY zone on that panel that is lighter than PANEL_REF.\n"
+            "  → This includes large bright zones covering most of a panel — fill all of them.\n"
+            "  → After filling, no area on any panel should be brighter than its own bottom edge.\n"
+            "  → Check hood, roof, front quarter panel, all doors, rear quarter, bumpers — ALL panels.\n"
+            "  → For windshield and glass: fill all white/bright-grey patches with dark glass tone.\n"
+            "    Front-view shots: the ENTIRE windshield may need to be filled dark.\n"
+        )
+    if color_drifted:
+        issues.append(
+            f"ISSUE 2 — CAR COLOR CHANGED ({color_drift*100:.0f}% LAB drift from original):\n"
+            "The car's paint color shifted from the original. You must restore the exact color.\n"
+            "YOU MUST:\n"
+            "  → Sample the true paint color from the BOTTOM EDGE of a door or fender.\n"
+            "  → When filling reflections, use ONLY this sampled color — never invent or lighten it.\n"
+            "  → The car in the output must be the exact same hue and darkness as the input.\n"
+            "  → Dark cars must stay dark. Navy blue must stay navy blue. Black must stay black.\n"
+        )
+
+    issue_text = "\n".join(issues)
+
+    return (
+        "This is attempt 2. The previous edit had quality issues that must be fixed.\n\n"
+        f"{issue_text}\n"
+        "EVERYTHING ELSE is correct — do NOT change the background, floor, or car position.\n"
+        "Focus ONLY on fixing the issues listed above.\n\n"
+        "ABSOLUTE RULE — DO NOT REMOVE ANY CAR PART:\n"
+        "Every part of the vehicle must remain exactly as it appears — body, glass, trim, wheels,\n"
+        "lights, roof rack, cargo, antenna, step bars, mirrors. Only fix the listed issues.\n\n"
+        "Return only the corrected image with no text or watermarks."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -1487,9 +1617,9 @@ def process_car_image(
         logger.info("Stage 2 raw output: %s", result_pil.size)
 
         # --- Deterministic post-processing (applied at Gemini resolution before upscaling) ---
-        # Generate car mask once — used by all post-processing steps
+        # Generate car mask once from the ORIGINAL small image — stable reference
         logger.info("Generating car mask for post-processing...")
-        car_mask_small = _get_car_mask_rembg(result_pil)
+        car_mask_small = _get_car_mask_rembg(pil_img_small)
 
         # Force wall/ceiling background to pure white — eliminates cyclorama shadow and
         # any grey arc Gemini leaves behind regardless of prompt instructions.
@@ -1498,6 +1628,76 @@ def process_car_image(
         # Restore floor color to match the original (Gemini often shifts floor brightness)
         floor_clean_resized = floor_clean_pil.resize(result_pil.size, Image.Resampling.LANCZOS)
         result_pil = _restore_floor_from_original(floor_clean_resized, result_pil, car_mask_small)
+
+        # -----------------------------------------------------------------------
+        # Quality validation + automatic retry (Attempt 2)
+        # Check attempt 1 result against the original:
+        #   - Are reflections still visible on car panels?
+        #   - Did the car color drift significantly?
+        # If either check fails → build a targeted retry prompt and call Gemini
+        # once more, then apply the same post-processing to the retry result.
+        # The better result (fewer issues) is kept.
+        # -----------------------------------------------------------------------
+        reflections_remain, reflection_score = _check_reflections_remaining(
+            pil_img_small, result_pil, car_mask_small
+        )
+        color_drifted, color_drift = _check_color_drift(
+            pil_img_small, result_pil, car_mask_small
+        )
+
+        if reflections_remain or color_drifted:
+            logger.info(
+                "Attempt 1 quality check FAILED (reflections=%s score=%.1f%%, "
+                "color_drift=%s drift=%.1f%%) — running attempt 2",
+                reflections_remain, reflection_score * 100,
+                color_drifted, color_drift * 100,
+            )
+            retry_prompt = _build_retry_prompt(
+                reflections_remain, reflection_score, color_drifted, color_drift
+            )
+            try:
+                # Send the attempt 1 result to Gemini with the targeted fix prompt
+                retry_input_bytes = _pil_to_jpeg_bytes(result_pil)
+                retry_response = _call_gemini_with_retry(
+                    client, retry_prompt, retry_input_bytes, aspect,
+                    f"{filename}[attempt2]"
+                )
+                retry_pil = _extract_image_from_response(retry_response)
+
+                if retry_pil.size != result_pil.size:
+                    retry_pil = retry_pil.resize(result_pil.size, Image.Resampling.LANCZOS)
+
+                # Apply same post-processing to retry result
+                retry_pil = _force_wall_background_white(retry_pil, car_mask_small)
+                retry_pil = _restore_floor_from_original(floor_clean_resized, retry_pil, car_mask_small)
+
+                # Validate retry result — keep whichever attempt is better
+                retry_reflections, retry_ref_score = _check_reflections_remaining(
+                    pil_img_small, retry_pil, car_mask_small
+                )
+                retry_color_drifted, retry_color_drift = _check_color_drift(
+                    pil_img_small, retry_pil, car_mask_small
+                )
+
+                # Score: lower = better (sum of both issue scores)
+                attempt1_score = reflection_score + color_drift
+                attempt2_score = retry_ref_score  + retry_color_drift
+
+                if attempt2_score < attempt1_score:
+                    logger.info(
+                        "Attempt 2 is better (score %.3f vs %.3f) — using attempt 2",
+                        attempt2_score, attempt1_score,
+                    )
+                    result_pil = retry_pil
+                else:
+                    logger.info(
+                        "Attempt 1 is better or equal (score %.3f vs %.3f) — keeping attempt 1",
+                        attempt1_score, attempt2_score,
+                    )
+            except Exception as e:
+                logger.warning("Attempt 2 failed (%s) — keeping attempt 1 result", e)
+        else:
+            logger.info("Attempt 1 quality check PASSED — no retry needed")
 
         logger.info("Stage 2 output received at %s — upscaling to %dx%d", result_pil.size, orig_w, orig_h)
 
