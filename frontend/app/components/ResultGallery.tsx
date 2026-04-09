@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Download, X, CheckCircle2, ChevronLeft, ChevronRight, DownloadCloud, Loader2 } from "lucide-react";
+import { Download, X, CheckCircle2, ChevronLeft, ChevronRight, DownloadCloud, Loader2, MessageSquare, CornerDownRight } from "lucide-react";
 import { toast } from "sonner";
 import JSZip from "jszip";
 import { BeforeAfterSlider } from "./BeforeAfterSlider";
@@ -15,6 +15,7 @@ type Props = {
   results: ProcessedItem[];
   onClear: () => void;
   isLoading?: boolean;
+  onRefine?: (item: ProcessedItem, feedback: string) => Promise<void>;
 };
 
 function truncateFilename(name: string, maxLen = 22) {
@@ -25,12 +26,42 @@ function truncateFilename(name: string, maxLen = 22) {
   return base.slice(0, maxLen - ext.length - 3) + "…" + ext;
 }
 
-export function ResultGallery({ results, onClear, isLoading }: Props) {
+export function ResultGallery({ results, onClear, isLoading, onRefine }: Props) {
   const [selected, setSelected] = useState(0);
   const [downloadAllLoading, setDownloadAllLoading] = useState(false);
   const downloadAllRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const item = results[selected];
+
+  const [quickIssue, setQuickIssue] = useState("");
+  const [customMessage, setCustomMessage] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  const handleRefine = async () => {
+    if (!onRefine || !item) return;
+    const custom = customMessage.trim();
+    const quick = quickIssue.trim();
+    if (!custom && !quick) return;
+    const composedFeedback = [
+      quick ? `Issue type: ${quick}` : "",
+      custom ? `Client request (exact): ${custom}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    setIsRefining(true);
+    try {
+      await onRefine(item, composedFeedback);
+      setQuickIssue("");
+      setCustomMessage("");
+      setShowFeedback(false);
+      toast.success("Image fixed!");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Refinement failed");
+    } finally {
+      setIsRefining(false);
+    }
+  };
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -133,6 +164,7 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
             afterSrc={item.processedUrl}
             beforeLabel="Original"
             afterLabel="Processed"
+            overlayLoading={isRefining}
           />
         </div>
 
@@ -207,41 +239,137 @@ export function ResultGallery({ results, onClear, isLoading }: Props) {
                 {results.length > 1 ? `Image ${selected + 1} of ${results.length}` : "Ready to save"}
               </p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="w-full rounded-xl bg-emerald-600 px-6 font-semibold shadow-lg transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:w-auto"
-              >
-                <a
-                  href={item.processedUrl}
-                  download={item.processedFilename}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Download className="mr-2 h-5 w-5" />
-                  Download
-                </a>
-              </Button>
-              {results.length > 1 && (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="lg"
-                  onClick={handleDownloadAll}
-                  disabled={downloadAllLoading}
-                  className="w-full rounded-xl border-slate-300 font-medium transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-600 dark:hover:border-emerald-600 dark:hover:bg-emerald-900 dark:hover:text-emerald-300 sm:w-auto"
+                  onClick={() => setShowFeedback(!showFeedback)}
+                  className="w-full rounded-xl bg-white shadow-sm border border-slate-200 text-slate-700 transition hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:w-auto"
                 >
-                  {downloadAllLoading ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <DownloadCloud className="mr-2 h-5 w-5" />
-                  )}
-                  {downloadAllLoading ? "Creating ZIP…" : "Download all (ZIP)"}
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Fix Issue
                 </Button>
-              )}
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full rounded-xl bg-emerald-600 px-6 font-semibold shadow-lg transition hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:w-auto"
+                >
+                  <a
+                    href={item.processedUrl}
+                    download={item.processedFilename}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Download className="mr-2 h-5 w-5" />
+                    Download
+                  </a>
+                </Button>
+                {results.length > 1 && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={handleDownloadAll}
+                    disabled={downloadAllLoading}
+                    className="w-full rounded-xl border-slate-300 font-medium transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-600 dark:hover:border-emerald-600 dark:hover:bg-emerald-900 dark:hover:text-emerald-300 sm:w-auto"
+                  >
+                    {downloadAllLoading ? (
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      <DownloadCloud className="mr-2 h-5 w-5" />
+                    )}
+                    {downloadAllLoading ? "Creating ZIP…" : "Download all (ZIP)"}
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {/* Iterative Refinement Form */}
+            {showFeedback && (
+              <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-900/30 dark:bg-emerald-950/20 sm:p-5">
+                <div className="flex items-start gap-4">
+                  <div className="hidden sm:block">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
+                      <MessageSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <h4 className="font-medium text-slate-800 dark:text-slate-200">What needs fixing?</h4>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        AI might make mistakes! For any issue, there is an option to enter a custom message below (e.g. &quot;remove the puddle&quot;, &quot;car color changed to grey&quot;).
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {[
+                        "Remove white light reflection from car",
+                        "Remove remaining dirt spots on floor",
+                        "Remove remaining water on floor",
+                        "Floor still wet",
+                        "Car color has shifted",
+                        "Car orientation is incorrect",
+                        "Background not white",
+                        "Floor is not clean",
+                        "Reflection is not removed from the car",
+                        "Car color has changed",
+                        "Car direction has changed",
+                        "Floor color has changed",
+                        "Car position has changed",
+                        "Car color is slightly changed",
+                      ].map((q) => (
+                        <button
+                          key={q}
+                          onClick={() => {
+                            setQuickIssue(q);
+                            setCustomMessage(q);
+                          }}
+                          className={cn(
+                            "rounded-full border px-3 py-1.5 font-medium transition",
+                            quickIssue === q
+                              ? "border-emerald-500 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-800 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300"
+                          )}
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        type="text"
+                        value={customMessage}
+                        onChange={(e) => setCustomMessage(e.target.value)}
+                        placeholder="Describe client request exactly (area + change needed)..."
+                        disabled={isRefining}
+                        className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-emerald-500"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleRefine();
+                        }}
+                      />
+                      <Button 
+                        onClick={handleRefine} 
+                        disabled={(!customMessage.trim() && !quickIssue.trim()) || isRefining}
+                        className="w-full sm:w-auto"
+                      >
+                        {isRefining ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Fixing...
+                          </>
+                        ) : (
+                          <>
+                            <CornerDownRight className="mr-2 h-4 w-4" />
+                            Apply Fix
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
       </CardContent>
     </Card>
   );

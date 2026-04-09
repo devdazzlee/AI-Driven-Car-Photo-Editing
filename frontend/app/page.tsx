@@ -22,13 +22,14 @@ export default function Home() {
     progress,
     onFilesSelected,
     processImages,
+    refineImage,
     clearAll,
   } = useProcessImages();
 
   const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false);
   const [outputFormat, setOutputFormat] = useState("png");
   const [background, setBackground] = useState("white");
-  const [processingMode, setProcessingMode] = useState("enhance-preserve");
+  const [processingMode, setProcessingMode] = useState("standard");
   const [lightingBoost, setLightingBoost] = useState(1.0);
   const showResultsSkeleton = isProcessing && results.length === 0 && progress.total <= 3;
 
@@ -62,7 +63,7 @@ export default function Home() {
               Car Image Editor
             </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Upload car images. Floor, walls and corner are kept—same color, natural look.
+              Upload car images. Standard mode enforces clean white studio background.
             </p>
           </div>
 
@@ -209,7 +210,11 @@ export default function Home() {
 
           {results.length > 0 && !showResultsSkeleton && (
             <div className="mt-6 sm:mt-8">
-              <ResultGallery results={results} onClear={clearAll} />
+              <ResultGallery 
+                results={results} 
+                onClear={clearAll} 
+                onRefine={(item, text) => refineImage(item, text, outputFormat)}
+              />
             </div>
           )}
         </section>

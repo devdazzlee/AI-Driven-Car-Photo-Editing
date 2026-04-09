@@ -10,6 +10,8 @@ type Props = {
   afterSrc: string;
   beforeLabel?: string;
   afterLabel?: string;
+  /** e.g. while /api/refine is running — shows overlay even if images already loaded */
+  overlayLoading?: boolean;
 };
 
 export function BeforeAfterSlider({
@@ -17,6 +19,7 @@ export function BeforeAfterSlider({
   afterSrc,
   beforeLabel = "Before",
   afterLabel = "After",
+  overlayLoading = false,
 }: Props) {
   const [position, setPosition] = useState(50);
   const [beforeLoaded, setBeforeLoaded] = useState(false);
@@ -25,10 +28,19 @@ export function BeforeAfterSlider({
   const isDragging = useRef(false);
   const isTouchDragging = useRef(false);
 
-  // Reset loaded state whenever the image sources change
+  const prevBefore = useRef(beforeSrc);
+  const prevAfter = useRef(afterSrc);
+
+  // Reset loaded state only when the specific source changes
   useEffect(() => {
-    setBeforeLoaded(false);
-    setAfterLoaded(false);
+    if (beforeSrc !== prevBefore.current) {
+      setBeforeLoaded(false);
+      prevBefore.current = beforeSrc;
+    }
+    if (afterSrc !== prevAfter.current) {
+      setAfterLoaded(false);
+      prevAfter.current = afterSrc;
+    }
   }, [beforeSrc, afterSrc]);
 
   const updatePosition = useCallback((clientX: number) => {
@@ -92,14 +104,15 @@ export function BeforeAfterSlider({
   );
 
   const bothLoaded = beforeLoaded && afterLoaded;
+  const showBlockingOverlay = overlayLoading || !bothLoaded;
 
   const handleContainerPointerDown = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
-      if (!bothLoaded) return;
+      if (!bothLoaded || overlayLoading) return;
       const clientX = "touches" in e ? e.touches[0]?.clientX : (e as React.MouseEvent).clientX;
       if (typeof clientX === "number") updatePosition(clientX);
     },
-    [bothLoaded, updatePosition]
+    [bothLoaded, overlayLoading, updatePosition]
   );
 
   return (
@@ -111,13 +124,17 @@ export function BeforeAfterSlider({
         onMouseDown={handleContainerPointerDown}
         onTouchStart={handleContainerPointerDown}
       >
-        {!bothLoaded && (
+        {showBlockingOverlay && (
           <div className="absolute inset-0 z-10 flex items-center justify-center">
-            <Skeleton className="absolute inset-0 rounded-none" />
+            {overlayLoading ? (
+              <div className="absolute inset-0 rounded-none bg-slate-900/35" />
+            ) : (
+              <Skeleton className="absolute inset-0 rounded-none" />
+            )}
             <div className="relative z-20 flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
               <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                Loading images…
+                {overlayLoading ? "Applying fix…" : "Loading images…"}
               </span>
             </div>
           </div>
@@ -152,7 +169,7 @@ export function BeforeAfterSlider({
         </div>
         <div
           className="absolute top-0 bottom-0 z-20 flex w-10 -translate-x-1/2 cursor-grab items-center justify-center active:cursor-grabbing"
-          style={{ left: `${position}%`, pointerEvents: bothLoaded ? "auto" : "none" }}
+          style={{ left: `${position}%`, pointerEvents: bothLoaded && !overlayLoading ? "auto" : "none" }}
           onMouseDown={handlePointerDown}
           onTouchStart={handlePointerDown}
         >

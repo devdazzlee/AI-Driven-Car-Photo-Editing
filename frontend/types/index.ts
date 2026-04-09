@@ -4,4 +4,5 @@ export type ProcessedItem = {
   originalUrl: string;
   processedUrl: string;
   success: boolean;
+  jobId: string;
 };

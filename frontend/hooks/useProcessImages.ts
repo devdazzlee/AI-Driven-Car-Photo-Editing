@@ -21,6 +21,7 @@ type UseProcessImagesReturn = {
   progress: { completed: number; total: number; jobId: string };
   onFilesSelected: (files: File[]) => void;
   processImages: (options?: ProcessOptions) => Promise<void>;
+  refineImage: (item: ProcessedItem, feedback: string, outputFormat: string) => Promise<void>;
   clearAll: () => void;
 };
 
@@ -132,6 +133,7 @@ export function useProcessImages(): UseProcessImagesReturn {
                     originalUrl,
                     processedUrl: `${API_URL}/api/download/${data.job_id}/${r.processed_filename}`,
                     success: true,
+                    jobId: data.job_id,
                   };
                 }
               );
@@ -167,6 +169,7 @@ export function useProcessImages(): UseProcessImagesReturn {
               originalUrl,
               processedUrl: `${API_URL}/api/download/${jobId}/${r.processed_filename}`,
               success: true,
+              jobId,
             };
           }
         );
@@ -190,6 +193,61 @@ export function useProcessImages(): UseProcessImagesReturn {
     [files, revokeObjectUrls]
   );
 
+  const refineImage = useCallback(
+    async (item: ProcessedItem, feedback: string, outputFormat: string) => {
+      const fetchOpts: RequestInit = { cache: "no-store" };
+      // Fetch both images as blobs (avoid stale cache; CORS must allow frontend origin on API)
+      const [origBlob, procBlob] = await Promise.all([
+        fetch(item.originalUrl, fetchOpts).then((r) => {
+          if (!r.ok) throw new Error(`Could not load original image (${r.status})`);
+          return r.blob();
+        }),
+        fetch(item.processedUrl, fetchOpts).then((r) => {
+          if (!r.ok) throw new Error(`Could not load processed image (${r.status})`);
+          return r.blob();
+        }),
+      ]);
+
+      const formData = new FormData();
+      formData.append("original_file", new File([origBlob], item.originalFilename));
+      formData.append("processed_file", new File([procBlob], item.processedFilename));
+      formData.append("feedback", feedback);
+      formData.append("job_id", item.jobId);
+      formData.append("output_format", outputFormat);
+
+      const res = await fetch(`${API_URL}/api/refine`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        const d = err.detail;
+        const msg =
+          typeof d === "string"
+            ? d
+            : Array.isArray(d)
+              ? d[0]?.msg || JSON.stringify(d)
+              : JSON.stringify(d || "Refinement failed");
+        throw new Error(msg);
+      }
+
+      const data = await res.json();
+      // Cache-bust so the before/after view always loads the new PNG (same path was overwriting before)
+      const refinedUrl = `${API_URL}${data.download_url}?v=${Date.now()}`;
+
+      // Match by job + original name so re-refine after filename changes to *_refined still updates the row
+      setResults((prev) =>
+        prev.map((r) =>
+          r.jobId === item.jobId && r.originalFilename === item.originalFilename
+            ? { ...r, processedUrl: refinedUrl, processedFilename: data.refined_filename }
+            : r
+        )
+      );
+    },
+    []
+  );
+
   return {
     files,
     results,
@@ -198,6 +256,7 @@ export function useProcessImages(): UseProcessImagesReturn {
     progress,
     onFilesSelected,
     processImages,
+    refineImage,
     clearAll,
   };
 }
