@@ -302,6 +302,8 @@ export function ResultGallery({ results, onClear, isLoading, onRefine }: Props) 
                     
                     <div className="flex flex-wrap gap-2 text-xs">
                       {[
+                        "Remove shadows on car",
+                        "Remove photographer/person reflections on paint",
                         "Remove white light reflection from car",
                         "Remove remaining dirt spots on floor",
                         "Remove remaining water on floor",
