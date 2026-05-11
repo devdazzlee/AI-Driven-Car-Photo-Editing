@@ -236,11 +236,20 @@ export function useProcessImages(): UseProcessImagesReturn {
       // Cache-bust so the before/after view always loads the new PNG (same path was overwriting before)
       const refinedUrl = `${API_URL}${data.download_url}?v=${Date.now()}`;
 
-      // Match by job + original name so re-refine after filename changes to *_refined still updates the row
+      // Match by job + original name so re-refine after filename changes to *_refined still updates the row.
+      // CRITICAL: capture the row's CURRENT processedUrl into previousProcessedUrl BEFORE overwriting.
+      // That way the before/after slider can show "the image before this refine" → "the refined image",
+      // which is what the user means by "I want to see what the refine changed".
       setResults((prev) =>
         prev.map((r) =>
           r.jobId === item.jobId && r.originalFilename === item.originalFilename
-            ? { ...r, processedUrl: refinedUrl, processedFilename: data.refined_filename }
+            ? {
+                ...r,
+                previousProcessedUrl: r.processedUrl,
+                previousProcessedFilename: r.processedFilename,
+                processedUrl: refinedUrl,
+                processedFilename: data.refined_filename,
+              }
             : r
         )
       );

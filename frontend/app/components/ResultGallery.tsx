@@ -26,6 +26,74 @@ function truncateFilename(name: string, maxLen = 22) {
   return base.slice(0, maxLen - ext.length - 3) + "…" + ext;
 }
 
+// Preset prompts shown as chips above the Fix Issue input. Each prompt is
+// engineered to be unambiguous, concrete, and scoped — it tells the model
+// exactly which region to edit, what to change, what to preserve, and what
+// NOT to touch. Clicking a chip fills the textbox so the user can review or
+// edit before clicking Apply Fix.
+const QUICK_FIXES: { label: string; prompt: string }[] = [
+  {
+    label: "Remove reflections from car",
+    prompt:
+      "Remove reflections and glare from the car only. On painted body panels " +
+      "(hood, roof, doors, fenders, quarter panels, pillars): remove bright white " +
+      "softbox hotspots and milky streaks; heal with the same panel's base paint " +
+      "sampled from nearby non-reflective pixels — keep paint hue unchanged. " +
+      "On all glass (windshield, side windows, rear glass): remove bright white " +
+      "reflections and milky gradients while keeping natural tint, defroster lines, " +
+      "and glass shape. Do not remove badges, mirrors, antennas, trim, or wheels. " +
+      "Do not change floor or wall.",
+  },
+  {
+    label: "Floor is not clean",
+    prompt:
+      "The floor still has dirt visible. Clean every remaining oil mark, grease " +
+      "spot, water puddle, water drop, tire scuff, skid mark, footprint, dust " +
+      "patch, and debris speck on the floor. For each spot, sample the replacement " +
+      "color from the immediately adjacent clean tile (within 30 pixels). Keep the " +
+      "floor's exact tile material, tile size, grout lines, and overall darkness — " +
+      "do NOT brighten the floor, do NOT smooth it, do NOT replace it with a " +
+      "different floor.",
+  },
+  {
+    label: "Tires are not clean",
+    prompt:
+      "The tire sidewalls still show brown, grey, or white dust. Clean every brown " +
+      "dust film, brake dust, mud, and dust trail from the rubber sidewalls of " +
+      "every visible tire. After cleanup the rubber sidewalls read as uniform " +
+      "clean dark rubber. Do NOT touch the wheel rims, spokes, hubcaps, lug nuts, " +
+      "or any metallic part — only the rubber sidewalls.",
+  },
+  {
+    label: "Car size has changed",
+    prompt:
+      "The car size has changed compared to the original image. Make the car " +
+      "exactly the same size as in the original — same bounding box width and " +
+      "height in pixels, same body length, same wheel size. Do not scale up or " +
+      "down by even 1%. Keep all the wall and floor cleanup already in this " +
+      "image; only correct the car size.",
+  },
+  {
+    label: "Car position has changed",
+    prompt:
+      "The car position has shifted compared to the original image. Move the car " +
+      "back to its exact original position. The car centroid, body edges, and the " +
+      "margins from the car to the image edges must match the original image to " +
+      "the pixel. Keep all the wall and floor cleanup already in this image; only " +
+      "correct the car position.",
+  },
+  {
+    label: "Car direction has changed",
+    prompt:
+      "The car is facing a different direction or showing a different camera " +
+      "angle than in the original image. Make the car face the exact same " +
+      "direction as in the original — same camera viewpoint, same body lines " +
+      "visible, headlights and tail lights pointing the same way. Do not flip, " +
+      "rotate, or re-pose the car. Keep all the wall and floor cleanup already " +
+      "in this image; only correct the car direction.",
+  },
+];
+
 export function ResultGallery({ results, onClear, isLoading, onRefine }: Props) {
   const [selected, setSelected] = useState(0);
   const [downloadAllLoading, setDownloadAllLoading] = useState(false);
@@ -33,7 +101,6 @@ export function ResultGallery({ results, onClear, isLoading, onRefine }: Props) 
   const scrollRef = useRef<HTMLDivElement>(null);
   const item = results[selected];
 
-  const [quickIssue, setQuickIssue] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [isRefining, setIsRefining] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -41,18 +108,11 @@ export function ResultGallery({ results, onClear, isLoading, onRefine }: Props) 
   const handleRefine = async () => {
     if (!onRefine || !item) return;
     const custom = customMessage.trim();
-    const quick = quickIssue.trim();
-    if (!custom && !quick) return;
-    const composedFeedback = [
-      quick ? `Issue type: ${quick}` : "",
-      custom ? `Client request (exact): ${custom}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+    if (!custom) return;
+    const composedFeedback = `Client request (exact): ${custom}`;
     setIsRefining(true);
     try {
       await onRefine(item, composedFeedback);
-      setQuickIssue("");
       setCustomMessage("");
       setShowFeedback(false);
       toast.success("Image fixed!");
@@ -160,10 +220,13 @@ export function ResultGallery({ results, onClear, isLoading, onRefine }: Props) 
       <CardContent className="space-y-0 p-0">
         <div className="px-4 pt-4 sm:px-6 sm:pt-5">
           <BeforeAfterSlider
-            beforeSrc={item.originalUrl}
+            // If the user just ran a refine, show the pre-refine image as "before"
+            // so they can see exactly what changed. On the first process result
+            // (no refine yet) this falls back to the raw upload.
+            beforeSrc={item.previousProcessedUrl ?? item.originalUrl}
             afterSrc={item.processedUrl}
-            beforeLabel="Original"
-            afterLabel="Processed"
+            beforeLabel={item.previousProcessedUrl ? "Before fix" : "Original"}
+            afterLabel={item.previousProcessedUrl ? "After fix" : "Processed"}
             overlayLoading={isRefining}
           />
         </div>
@@ -299,59 +362,46 @@ export function ResultGallery({ results, onClear, isLoading, onRefine }: Props) 
                         AI might make mistakes! For any issue, there is an option to enter a custom message below (e.g. &quot;remove the puddle&quot;, &quot;car color changed to grey&quot;).
                       </p>
                     </div>
-                    
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      {[
-                        "Remove shadows on car",
-                        "Remove photographer/person reflections on paint",
-                        "Remove white light reflection from car",
-                        "Remove remaining dirt spots on floor",
-                        "Remove remaining water on floor",
-                        "Floor still wet",
-                        "Car color has shifted",
-                        "Car orientation is incorrect",
-                        "Background not white",
-                        "Floor is not clean",
-                        "Reflection is not removed from the car",
-                        "Car color has changed",
-                        "Car direction has changed",
-                        "Floor color has changed",
-                        "Car position has changed",
-                        "Car color is slightly changed",
-                      ].map((q) => (
-                        <button
-                          key={q}
-                          onClick={() => {
-                            setQuickIssue(q);
-                            setCustomMessage(q);
-                          }}
-                          className={cn(
-                            "rounded-full border px-3 py-1.5 font-medium transition",
-                            quickIssue === q
-                              ? "border-emerald-500 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-emerald-800 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300"
-                          )}
-                        >
-                          {q}
-                        </button>
-                      ))}
+
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                        Quick fixes — click to fill, edit if needed, then Apply Fix:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {QUICK_FIXES.map((qf) => (
+                          <button
+                            key={qf.label}
+                            type="button"
+                            onClick={() => setCustomMessage(qf.prompt)}
+                            disabled={isRefining}
+                            className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800/60 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                          >
+                            {qf.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <input
-                        type="text"
-                        value={customMessage}
-                        onChange={(e) => setCustomMessage(e.target.value)}
-                        placeholder="Describe client request exactly (area + change needed)..."
-                        disabled={isRefining}
-                        className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-emerald-500"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleRefine();
-                        }}
-                      />
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <textarea
+                          value={customMessage}
+                          onChange={(e) => setCustomMessage(e.target.value)}
+                          placeholder="Describe client request exactly (area + change needed), or pick a quick fix above..."
+                          disabled={isRefining}
+                          rows={4}
+                          className="min-h-[5.5rem] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-emerald-500"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleRefine();
+                          }}
+                        />
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                          Tip: Ctrl+Enter (or ⌘+Enter) to apply from the text box.
+                        </p>
+                      </div>
                       <Button 
                         onClick={handleRefine} 
-                        disabled={(!customMessage.trim() && !quickIssue.trim()) || isRefining}
+                        disabled={!customMessage.trim() || isRefining}
                         className="w-full sm:w-auto"
                       >
                         {isRefining ? (
